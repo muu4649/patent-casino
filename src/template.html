@@ -2,651 +2,910 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>特許カジノ</title>
 <style>
 :root{
-  --felt:#0d3b2e; --felt2:#0a2f24; --ink:#0b0f0d;
-  --gold:#d4af37; --gold-dim:#8a7328; --cream:#f4efe2;
-  --red:#b3202e; --green:#1f8a4c; --gray:#6b7a75;
+  --felt:#0d3b2e; --felt2:#071f18; --gold:#d4af37; --gold-d:#8a7328;
+  --cream:#f4efe2; --red:#e0505f; --green:#2fae6a; --mute:#9fb8ae;
   --p1:#e4b429; --p2:#4aa3df; --p3:#e06c4f; --p4:#7fc47f;
+  --tap:56px;             /* 最小タップ領域 */
+  --barb:78px;            /* 下部バーの高さ */
 }
-*{box-sizing:border-box}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
 body{
-  margin:0; padding:0; min-height:100vh;
-  background:
-    radial-gradient(ellipse at 50% 0%, #14513e 0%, var(--felt) 45%, var(--felt2) 100%);
-  color:var(--cream);
+  min-height:100vh; color:var(--cream);
+  background:radial-gradient(ellipse at 50% -10%, #165844 0%, var(--felt) 45%, var(--felt2) 100%);
+  background-attachment:fixed;
   font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;
-  font-feature-settings:"palt";
+  font-feature-settings:"palt"; -webkit-text-size-adjust:100%;
 }
-.wrap{max-width:1000px;margin:0 auto;padding:20px 16px 60px}
-h1{
-  font-size:30px;letter-spacing:.14em;margin:8px 0 2px;text-align:center;
-  color:var(--gold);text-shadow:0 2px 0 #5b4a17,0 0 22px rgba(212,175,55,.35);
-}
-.sub{text-align:center;color:#9fb8ae;font-size:12px;letter-spacing:.24em;margin-bottom:22px}
-.card{
-  background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(0,0,0,.18));
-  border:1px solid rgba(212,175,55,.34); border-radius:12px;
-  padding:18px 20px; margin-bottom:16px;
-  box-shadow:0 8px 26px rgba(0,0,0,.34);
-}
-.card h2{margin:0 0 12px;font-size:15px;letter-spacing:.13em;color:var(--gold);font-weight:700}
-button{
-  font-family:inherit;font-size:14px;cursor:pointer;
-  background:linear-gradient(180deg,#1b6b50,#124a37);
-  color:var(--cream);border:1px solid rgba(212,175,55,.5);
-  border-radius:8px;padding:9px 16px;transition:.14s;
-}
-button:hover:not(:disabled){background:linear-gradient(180deg,#238263,#16583f);transform:translateY(-1px)}
-button:disabled{opacity:.34;cursor:not-allowed}
-button.primary{background:linear-gradient(180deg,var(--gold),#a8862a);color:#241d05;font-weight:700;border-color:#e8cf78}
-button.primary:hover:not(:disabled){background:linear-gradient(180deg,#e8c752,#bb9730)}
-button.ghost{background:transparent;border-color:rgba(244,239,226,.28)}
-input,select{
-  font-family:inherit;font-size:14px;padding:8px 10px;border-radius:7px;
-  border:1px solid rgba(212,239,226,.26);background:rgba(0,0,0,.3);color:var(--cream);
-}
-input:focus,select:focus{outline:2px solid var(--gold);outline-offset:1px}
-.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.wrap{max-width:760px;margin:0 auto;padding:0 12px calc(var(--barb) + 20px)}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .hide{display:none !important}
-.muted{color:#9fb8ae;font-size:12px;line-height:1.75}
 
-/* 出題カード */
-.qhead{text-align:center;padding:6px 0 4px}
-.qlabel{font-size:11px;letter-spacing:.3em;color:var(--gold-dim)}
-.qtitle{
-  font-family:"Hiragino Mincho ProN",serif;font-size:32px;font-weight:600;
-  margin:8px 0 12px;letter-spacing:.05em;line-height:1.35;
+/* ---------- 上部バー ---------- */
+.topbar{
+  position:sticky; top:0; z-index:40; margin:0 -12px 10px; padding:8px 12px;
+  background:rgba(7,31,24,.93); backdrop-filter:blur(8px);
+  border-bottom:1px solid rgba(212,175,55,.28);
+  display:flex; gap:6px; align-items:center; overflow-x:auto;
 }
-.qmeta{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px}
-.chipmeta{
-  font-size:11px;padding:4px 11px;border-radius:999px;
-  border:1px solid rgba(212,175,55,.34);background:rgba(0,0,0,.26);color:#cfe0d8;
-}
-.qhint{font-size:12.5px;color:#a9c2b8;margin-top:8px;font-style:italic}
-
-/* ベットボード */
-.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(184px,1fr));gap:10px;margin-top:6px}
-.wcard{
-  position:relative;border:1px solid rgba(212,175,55,.3);border-radius:10px;
-  background:linear-gradient(180deg,rgba(0,0,0,.3),rgba(0,0,0,.44));
-  padding:11px 12px 9px;transition:.14s;
-}
-.wcard.sel{border-color:var(--gold);background:linear-gradient(180deg,rgba(212,175,55,.19),rgba(212,175,55,.07));box-shadow:0 0 16px rgba(212,175,55,.26)}
-.wcard .w{font-size:17px;font-weight:700;letter-spacing:.02em;margin-bottom:3px;word-break:break-all}
-.wcard .o{font-size:12px;color:var(--gold);letter-spacing:.06em;font-weight:700}
-.wcard .ctl{display:flex;gap:5px;align-items:center;margin-top:8px}
-.wcard .ctl button{padding:3px 9px;font-size:13px;border-radius:6px;min-width:30px}
-.wcard .amt{
-  min-width:38px;text-align:center;font-size:15px;font-weight:700;
-  color:var(--gold);font-variant-numeric:tabular-nums;
-}
-.wcard.hit{border-color:var(--green);background:linear-gradient(180deg,rgba(31,138,76,.26),rgba(31,138,76,.09))}
-.wcard.mis{border-color:rgba(179,32,46,.6);background:linear-gradient(180deg,rgba(179,32,46,.18),rgba(0,0,0,.32));opacity:.72}
-.badge{
-  position:absolute;top:-8px;right:-6px;font-size:10px;font-weight:700;
-  padding:2px 8px;border-radius:999px;letter-spacing:.1em;
-}
-.badge.hit{background:var(--green);color:#fff}
-.badge.mis{background:var(--red);color:#fff}
-
-/* プレイヤー */
-.pbar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:4px}
 .ptag{
-  display:flex;align-items:center;gap:7px;padding:6px 13px;border-radius:999px;
-  background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.14);font-size:13px;
+  display:flex; align-items:center; gap:6px; padding:6px 11px; border-radius:999px;
+  background:rgba(255,255,255,.06); border:1px solid transparent;
+  font-size:13px; white-space:nowrap; flex:0 0 auto;
 }
-.ptag .dot{width:9px;height:9px;border-radius:50%}
-.ptag .c{font-weight:700;color:var(--gold);font-variant-numeric:tabular-nums}
-.ptag.now{border-color:var(--gold);box-shadow:0 0 14px rgba(212,175,55,.3);background:rgba(212,175,55,.12)}
+.ptag.now{border-color:var(--gold); background:rgba(212,175,55,.16)}
+.ptag .dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+.ptag b{color:var(--gold); font-variant-numeric:tabular-nums}
+.rnd{margin-left:auto; font-size:11px; letter-spacing:.14em; color:var(--gold-d); flex:0 0 auto}
 
-/* 請求項 */
+/* ---------- 見出し ---------- */
+.brand{text-align:center;padding:18px 0 4px}
+.brand h1{
+  margin:0; font-size:27px; letter-spacing:.16em; color:var(--gold); font-weight:800;
+  text-shadow:0 2px 0 #4a3c12, 0 0 26px rgba(212,175,55,.4);
+}
+.brand p{margin:5px 0 0; font-size:10.5px; letter-spacing:.28em; color:var(--mute)}
+
+.card{
+  background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(0,0,0,.2));
+  border:1px solid rgba(212,175,55,.3); border-radius:14px;
+  padding:15px 16px; margin-bottom:12px;
+}
+.lead{font-size:15px; line-height:1.85; text-align:center}
+.lead b{color:var(--gold)}
+details{margin-top:10px; border-top:1px solid rgba(255,255,255,.12); padding-top:10px}
+summary{font-size:13px; color:var(--mute); cursor:pointer; padding:6px 0}
+details ul{margin:6px 0 0; padding-left:20px; font-size:13px; line-height:1.9; color:#cfe0d8}
+
+label.fld{display:block; font-size:11px; letter-spacing:.1em; color:var(--mute); margin:0 0 5px}
+select,input[type=text]{
+  width:100%; font-family:inherit; font-size:16px; padding:11px 12px; border-radius:10px;
+  border:1px solid rgba(212,175,55,.3); background:rgba(0,0,0,.34); color:var(--cream);
+  min-height:var(--tap);
+}
+select:focus,input:focus{outline:2px solid var(--gold); outline-offset:1px}
+.grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:9px}
+.grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:9px}
+
+.btn{
+  display:flex; align-items:center; justify-content:center; gap:7px;
+  min-height:var(--tap); padding:0 20px; border-radius:12px; font-size:16px; font-weight:700;
+  background:linear-gradient(180deg,#1d7355,#124c39); color:var(--cream);
+  border:1px solid rgba(212,175,55,.45); width:100%;
+}
+.btn:active{transform:scale(.985)}
+.btn.gold{background:linear-gradient(180deg,var(--gold),#a8862a); color:#241d05; border-color:#e8cf78}
+.btn:disabled{opacity:.35}
+
+/* ---------- 出題 ---------- */
+.qcard{text-align:center; padding:16px 14px 14px}
+.qlabel{font-size:10px; letter-spacing:.3em; color:var(--gold-d)}
+.qtitle{
+  font-family:"Hiragino Mincho ProN","Yu Mincho",serif; font-size:26px; font-weight:600;
+  margin:9px 0 10px; line-height:1.4; letter-spacing:.04em;
+}
+.qmeta{display:flex; flex-wrap:wrap; gap:5px; justify-content:center}
+.qmeta span{
+  font-size:10.5px; padding:4px 10px; border-radius:999px; color:#cfe0d8;
+  border:1px solid rgba(212,175,55,.3); background:rgba(0,0,0,.28);
+}
+.qhint{font-size:12.5px; color:#a9c2b8; margin-top:9px; font-style:italic; line-height:1.7}
+.fic{
+  display:inline-block; font-size:10px; letter-spacing:.08em; padding:3px 8px; border-radius:4px;
+  background:rgba(224,80,95,.2); border:1px solid rgba(224,80,95,.5); color:#ffc9c9;
+  vertical-align:middle; margin-left:6px;
+}
+
+/* ---------- 手順 ---------- */
+.steps{display:flex; gap:6px; margin-bottom:10px}
+.step{
+  flex:1; text-align:center; font-size:11.5px; padding:8px 4px; border-radius:9px;
+  background:rgba(0,0,0,.26); border:1px solid rgba(255,255,255,.1); color:var(--mute);
+  line-height:1.5;
+}
+.step.on{border-color:var(--gold); background:rgba(212,175,55,.15); color:var(--cream); font-weight:700}
+.step i{display:block; font-style:normal; font-size:14px; color:var(--gold); font-weight:800}
+
+.counter{
+  display:flex; align-items:center; justify-content:space-between; margin:2px 0 9px;
+  font-size:12px; letter-spacing:.12em; color:var(--mute);
+}
+.counter b{color:var(--gold); font-size:15px; font-variant-numeric:tabular-nums}
+
+/* ---------- ワードボード ---------- */
+.board{display:grid; grid-template-columns:repeat(2,1fr); gap:9px}
+@media(min-width:620px){ .board{grid-template-columns:repeat(4,1fr)} }
+.wcard{
+  position:relative; min-height:72px; padding:11px 10px 9px; border-radius:12px; text-align:left;
+  background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(0,0,0,.3));
+  border:1.5px solid rgba(212,175,55,.26); transition:transform .1s, opacity .15s;
+  display:flex; flex-direction:column; justify-content:center; width:100%;
+}
+.wcard:active{transform:scale(.97)}
+.wcard .w{font-size:16.5px; font-weight:700; line-height:1.25; word-break:break-word}
+.wcard .o{font-size:12px; color:var(--gold); font-weight:700; margin-top:3px}
+.wcard.sel{
+  border-color:var(--gold); background:linear-gradient(180deg,rgba(212,175,55,.26),rgba(212,175,55,.09));
+  box-shadow:0 0 0 1px var(--gold), 0 4px 16px rgba(212,175,55,.22);
+}
+.wcard.dim{opacity:.28; pointer-events:none}
+.wcard .no{
+  position:absolute; top:-9px; left:-6px; width:23px; height:23px; border-radius:50%;
+  background:var(--gold); color:#241d05; font-size:12px; font-weight:800;
+  display:flex; align-items:center; justify-content:center;
+}
+.wcard .amt{
+  position:absolute; right:8px; bottom:7px; font-size:13px; font-weight:800; color:var(--gold);
+  font-variant-numeric:tabular-nums;
+}
+
+/* ---------- 選択中 ＆ チップ ---------- */
+.selbox{margin-top:12px}
+.selchips{display:flex; gap:7px; flex-wrap:wrap; margin-bottom:10px}
+.selchip{
+  display:flex; align-items:center; gap:7px; padding:9px 13px; border-radius:999px;
+  background:rgba(0,0,0,.32); border:1.5px solid rgba(212,175,55,.3); font-size:14px;
+  min-height:44px;
+}
+.selchip.act{border-color:var(--gold); background:rgba(212,175,55,.18)}
+.selchip b{color:var(--gold); font-variant-numeric:tabular-nums; font-size:15px}
+.selchip .x{color:var(--mute); font-size:17px; padding:0 2px; line-height:1}
+.chipbtns{display:grid; grid-template-columns:repeat(4,1fr); gap:8px}
+.chipbtn{
+  min-height:52px; border-radius:12px; font-size:16px; font-weight:800;
+  background:linear-gradient(180deg,rgba(255,255,255,.09),rgba(0,0,0,.26));
+  border:1.5px solid rgba(212,175,55,.34); color:var(--cream);
+}
+.chipbtn:active{transform:scale(.96)}
+.chipbtn:disabled{opacity:.3}
+
+/* ---------- 下部バー ---------- */
+.bottombar{
+  position:fixed; left:0; right:0; bottom:0; z-index:50;
+  padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+  background:rgba(7,31,24,.96); backdrop-filter:blur(10px);
+  border-top:1px solid rgba(212,175,55,.3);
+  display:flex; gap:11px; align-items:center;
+}
+.bottombar .info{flex:1; min-width:0; font-size:11.5px; color:var(--mute); line-height:1.5}
+.bottombar .info b{color:var(--gold); font-size:16px; font-variant-numeric:tabular-nums}
+.bottombar .btn{width:auto; flex:0 0 auto; padding:0 26px}
+
+/* ---------- 手番交代（全面ブラックアウト） ---------- */
+.handoff{
+  position:fixed; inset:0; z-index:100; background:#04120e;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:26px; text-align:center;
+}
+.handoff .lbl{font-size:10.5px; letter-spacing:.34em; color:var(--gold-d); margin-bottom:20px}
+.handoff .who{font-size:34px; font-weight:800; margin-bottom:6px; line-height:1.25}
+.handoff .msg{font-size:14.5px; color:var(--mute); line-height:1.85; margin-bottom:34px}
+.holdbtn{
+  position:relative; overflow:hidden; width:210px; height:210px; border-radius:50%;
+  border:2px solid var(--gold); background:rgba(212,175,55,.09);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px;
+}
+.holdbtn .fill{
+  position:absolute; inset:0; background:var(--gold); transform:scaleY(0);
+  transform-origin:bottom; transition:transform .05s linear;
+}
+.holdbtn .t{position:relative; font-size:17px; font-weight:800; color:var(--cream)}
+.holdbtn .s{position:relative; font-size:11.5px; color:var(--mute)}
+.holdbtn.done .t,.holdbtn.done .s{color:#241d05}
+
+/* ---------- 開票 ---------- */
+.revhead{text-align:center; padding:8px 0 14px}
+.revhead .big{font-size:29px; font-weight:800; color:var(--gold); letter-spacing:.14em}
+.revlist{display:flex; flex-direction:column; gap:8px}
+.revrow{
+  display:flex; align-items:center; gap:11px; padding:12px 14px; border-radius:11px;
+  border:1.5px solid rgba(255,255,255,.1); background:rgba(0,0,0,.26);
+  opacity:0; transform:translateY(9px); animation:pop .32s forwards;
+  flex-wrap:wrap;   /* 賭けた人の行を下段へ回す。これが無いとワード名が潰れる */
+}
+@keyframes pop{to{opacity:1; transform:none}}
+.revrow.hit{border-color:var(--green); background:linear-gradient(90deg,rgba(47,174,106,.24),rgba(0,0,0,.26))}
+.revrow.mis{border-color:rgba(224,80,95,.4)}
+.revrow.mis .w{opacity:.72; text-decoration:line-through}
+.revrow .mk{font-size:20px; flex:0 0 26px; text-align:center}
+.revrow .w{font-size:16.5px; font-weight:700; flex:1 1 auto; min-width:5em}
+.revrow .o{font-size:13px; color:var(--gold); font-weight:700; flex:0 0 auto; white-space:nowrap}
+.revrow .bettors{font-size:11.5px; color:var(--mute); flex:1 0 100%; margin-top:3px; line-height:1.7}
+.revrow.big-win{box-shadow:0 0 22px rgba(212,175,55,.4); border-color:var(--gold)}
+
+/* ---------- スコア ---------- */
+.scorerow{
+  display:flex; align-items:center; gap:12px; padding:15px 16px; border-radius:12px;
+  background:rgba(0,0,0,.28); border:1px solid rgba(255,255,255,.1); margin-bottom:9px;
+  opacity:0; animation:pop .35s forwards;
+}
+.scorerow .nm{font-size:17px; font-weight:700; flex:1 1 auto; min-width:0}
+.scorerow .df{font-size:23px; font-weight:800; font-variant-numeric:tabular-nums}
+.scorerow .df.plus{color:#6ee7a0} .scorerow .df.minus{color:#ff8b8b}
+.scorerow .tot{font-size:12px; color:var(--mute); text-align:right; min-width:62px}
+.scorerow .tot b{display:block; font-size:18px; color:var(--gold)}
+.detail{display:block; font-size:11.5px; color:var(--mute); line-height:1.7; margin-top:4px; font-weight:400}
+
+/* ---------- 請求項 ---------- */
 .claim{
-  font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
-  background:#f6f3e9;color:#1a1a1a;border-radius:8px;padding:16px 18px;
-  margin-bottom:11px;line-height:2.0;font-size:14.5px;white-space:pre-wrap;
-  border-left:4px solid var(--gold-dim);
+  font-family:"Hiragino Mincho ProN","Yu Mincho",serif; background:#f6f3e9; color:#1a1a1a;
+  border-radius:10px; padding:15px 16px; margin-bottom:10px; line-height:2.0; font-size:14.5px;
+  white-space:pre-wrap; border-left:4px solid var(--gold-d);
 }
 .claim .cn{
-  display:inline-block;font-family:system-ui,sans-serif;font-size:11px;font-weight:700;
-  letter-spacing:.16em;color:#6b5a1e;background:#e8dfc0;
-  padding:3px 10px;border-radius:4px;margin-bottom:9px;
+  display:inline-block; font-family:system-ui,sans-serif; font-size:10.5px; font-weight:800;
+  letter-spacing:.14em; color:#6b5a1e; background:#e8dfc0; padding:3px 9px; border-radius:4px;
+  margin-bottom:8px;
 }
-mark.hl{background:#ffe066;color:#000;padding:1px 2px;border-radius:3px;font-weight:700;box-shadow:0 0 0 1px #d4af37}
-mark.hl.bet{background:#1f8a4c;color:#fff;box-shadow:0 0 0 2px #0d3b2e}
+mark.hl{background:#ffe066; padding:1px 2px; border-radius:3px; font-weight:700; box-shadow:0 0 0 1px #d4af37}
+mark.hl.bet{background:var(--green); color:#fff; box-shadow:none}
+.lesson{
+  border-left:3px solid var(--gold); padding:10px 13px; margin-bottom:11px;
+  background:rgba(212,175,55,.08); border-radius:0 9px 9px 0; font-size:13.5px; line-height:1.8;
+}
+.lesson b{color:var(--gold)}
 
-/* 結果テーブル */
-table{width:100%;border-collapse:collapse;font-size:13.5px}
-th,td{padding:9px 10px;text-align:left;border-bottom:1px solid rgba(255,255,255,.11)}
-th{color:var(--gold);font-size:11px;letter-spacing:.14em;font-weight:700}
-td.num{text-align:right;font-variant-numeric:tabular-nums}
-.plus{color:#6ee7a0;font-weight:700}
-.minus{color:#ff8b8b;font-weight:700}
-.rank1{background:linear-gradient(90deg,rgba(212,175,55,.24),transparent)}
-
-/* 順位 */
-.podium{display:flex;flex-direction:column;gap:9px;margin-top:6px}
+/* ---------- 最終 ---------- */
 .prow{
-  display:flex;align-items:center;gap:14px;padding:13px 17px;border-radius:10px;
-  background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.11);
+  display:flex; align-items:center; gap:13px; padding:15px 17px; border-radius:12px;
+  background:rgba(0,0,0,.28); border:1px solid rgba(255,255,255,.1); margin-bottom:9px;
 }
-.prow.win{border-color:var(--gold);background:linear-gradient(90deg,rgba(212,175,55,.2),rgba(0,0,0,.28));box-shadow:0 0 22px rgba(212,175,55,.22)}
-.prow .rk{font-size:24px;font-weight:800;color:var(--gold);min-width:44px;font-family:serif}
-.prow .nm{font-size:18px;font-weight:700;flex:1}
-.prow .ch{font-size:24px;font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums}
-
-.warn{color:#ffb4b4;font-size:12.5px;margin-top:8px;min-height:17px}
-.turnbig{text-align:center;padding:26px 0}
-.turnbig .nm{font-size:30px;font-weight:800;margin-bottom:7px}
-.turnbig .ms{color:#9fb8ae;font-size:13px}
-.fic{
-  display:inline-block;font-size:10.5px;letter-spacing:.1em;padding:3px 9px;border-radius:4px;
-  background:rgba(179,32,46,.28);border:1px solid rgba(179,32,46,.6);color:#ffc9c9;margin-left:8px;
-  vertical-align:middle;
-}
-.stepnav{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px}
-.rules{font-size:13px;line-height:1.95;color:#cfe0d8}
-.rules b{color:var(--gold)}
-.rules ul{margin:6px 0 0;padding-left:20px}
+.prow.win{border-color:var(--gold); background:linear-gradient(90deg,rgba(212,175,55,.22),rgba(0,0,0,.28))}
+.prow .rk{font-size:23px; font-weight:800; color:var(--gold); min-width:38px; font-family:serif}
+.prow .nm{font-size:18px; font-weight:700; flex:1}
+.prow .ch{font-size:23px; font-weight:800; color:var(--gold); font-variant-numeric:tabular-nums}
+table{width:100%; border-collapse:collapse; font-size:13px}
+th,td{padding:8px 9px; border-bottom:1px solid rgba(255,255,255,.1); text-align:left}
+th{color:var(--gold); font-size:10.5px; letter-spacing:.12em}
+td.n{text-align:right; font-variant-numeric:tabular-nums}
+.warn{color:#ffb4b4; font-size:12.5px; min-height:16px; margin-top:7px; text-align:center}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>特 許 カ ジ ノ</h1>
-  <div class="sub">CLAIM BETTING GAME</div>
 
-  <!-- ============ セットアップ ============ -->
+<!-- ===== 手番交代（最前面） ===== -->
+<div class="handoff hide" id="handoff">
+  <div class="lbl">PLAYER CHANGE</div>
+  <div class="who" id="hoWho"></div>
+  <div class="msg">画面をこの人に渡してください<br>本人以外は見ないこと</div>
+  <button class="holdbtn" id="holdBtn">
+    <span class="fill" id="holdFill"></span>
+    <span class="t">長押しで開始</span>
+    <span class="s" id="holdSub">押したままにする</span>
+  </button>
+</div>
+
+<div class="topbar hide" id="topbar">
+  <div id="ptags" style="display:flex;gap:6px"></div>
+  <div class="rnd" id="rndLabel"></div>
+</div>
+
+<div class="wrap">
+
+  <!-- ===== セットアップ ===== -->
   <section id="scSetup">
+    <div class="brand"><h1>特 許 カ ジ ノ</h1><p>CLAIM BETTING GAME</p></div>
+
     <div class="card">
-      <h2>ルール</h2>
-      <div class="rules">
-        <b>発明の名称</b>だけを見て、<b>請求項1〜2に登場する単語</b>を予想してチップを賭けます。
+      <div class="lead">
+        発明の名称から、<b>請求項に出てきそうな単語</b>を当てろ。<br>
+        12語のうち最大3語にBET。<br>
+        当たれば <b>チップ × オッズ</b> を獲得。
+      </div>
+      <details>
+        <summary>詳しいルール</summary>
         <ul>
-          <li>賭けられるのは <b>1ラウンドにつき3ワードまで</b>、<b>合計は所持チップの半分まで</b></li>
-          <li>的中すると <b>賭け枚数 × オッズ</b>（小数切り捨て）が戻る。外れたら没収</li>
-          <li>ボード12語のうち<b>実際に請求項へ出るのは4語だけ</b>。残り8語は罠です</li>
-          <li>罠にも正解と同じ帯のオッズが振ってあります。<b>オッズを見ても正解は分かりません</b></li>
-          <li>チップが0枚になったら、次のラウンド開始時に救済で3枚支給</li>
+          <li>12語のうち、実際に請求項1〜2へ出るのは<b>4語だけ</b>。残り8語は罠</li>
+          <li>罠にも正解と同じ帯のオッズが振ってある。<b>オッズを見ても正解は分からない</b></li>
+          <li>1ラウンドに賭けられるのは所持チップの半分まで</li>
+          <li>チップが0枚になったら次ラウンド開始時に3枚支給</li>
           <li>全ラウンド終了時、チップが最も多い人の勝ち</li>
         </ul>
-      </div>
+      </details>
     </div>
 
     <div class="card">
-      <h2>プレイヤー</h2>
-      <div class="row" style="margin-bottom:12px">
-        <label class="muted">人数</label>
-        <select id="nPlayers"></select>
-        <label class="muted" style="margin-left:14px">初期チップ</label>
-        <select id="startChips"></select>
-        <label class="muted" style="margin-left:14px">ラウンド数</label>
-        <select id="nRounds"></select>
+      <div class="grid3" style="margin-bottom:11px">
+        <div><label class="fld">人数</label><select id="nPlayers"></select></div>
+        <div><label class="fld">チップ</label><select id="startChips"></select></div>
+        <div><label class="fld">ラウンド</label><select id="nRounds"></select></div>
       </div>
-      <div id="nameInputs" class="row"></div>
+      <div id="nameInputs" class="grid2"></div>
       <div class="warn" id="setupWarn"></div>
-      <div class="row" style="margin-top:14px">
-        <button class="primary" id="btnStart">ゲーム開始</button>
-        <button class="ghost" id="btnLoad">問題データを読み込む</button>
-        <input type="file" id="fileInput" accept=".json" class="hide">
-        <span class="muted" id="dataInfo"></span>
+      <button class="btn gold" id="btnStart" style="margin-top:12px">ゲーム開始</button>
+      <div class="grid2" style="margin-top:9px">
+        <button class="btn" id="btnLoad" style="font-size:13px">問題データを読み込む</button>
+        <button class="btn" id="btnShowData" style="font-size:13px">収録問題を見る</button>
       </div>
+      <input type="file" id="fileInput" accept=".json" class="hide">
+      <div class="warn" id="dataInfo" style="color:var(--mute)"></div>
     </div>
   </section>
 
-  <!-- ============ ラウンド見出し ============ -->
-  <section id="scRound" class="hide">
-    <div class="pbar" id="pbar"></div>
-
-    <div class="card">
-      <div class="qhead">
-        <div class="qlabel" id="roundLabel">ROUND 1</div>
-        <div class="qtitle" id="qTitle"></div>
-        <div class="qmeta" id="qMeta"></div>
-        <div class="qhint" id="qHint"></div>
-      </div>
+  <!-- ===== BET ===== -->
+  <section id="scBet" class="hide">
+    <div class="card qcard">
+      <div class="qlabel">発明の名称</div>
+      <div class="qtitle" id="qTitle"></div>
+      <div class="qmeta" id="qMeta"></div>
+      <div class="qhint" id="qHint"></div>
     </div>
 
-    <!-- BET -->
-    <div id="betArea">
-      <div class="card">
-        <h2 id="betWho">BET</h2>
-        <div class="muted" id="betStatus"></div>
-        <div class="board" id="board"></div>
-        <div class="warn" id="betWarn"></div>
-        <div class="stepnav">
-          <span class="muted" id="betSummary"></span>
-          <button class="primary" id="btnBetDone">この内容で確定</button>
-        </div>
-      </div>
+    <div class="steps">
+      <div class="step" id="st1"><i>1</i>単語を選ぶ</div>
+      <div class="step" id="st2"><i>2</i>チップを賭ける</div>
+      <div class="step" id="st3"><i>3</i>確定</div>
     </div>
 
-    <!-- 交代画面 -->
-    <div id="passArea" class="hide">
-      <div class="card">
-        <div class="turnbig">
-          <div class="nm" id="nextName"></div>
-          <div class="ms">の番です。前の人の賭けは見えません。</div>
-          <div style="margin-top:18px"><button class="primary" id="btnPassOk">準備OK</button></div>
-        </div>
-      </div>
+    <div class="counter">
+      <span id="selCount">0 / 3 WORDS SELECTED</span>
+      <span>残り <b id="remain">0</b> 枚</span>
     </div>
 
-    <!-- 開票前 -->
-    <div id="revealArea" class="hide">
-      <div class="card">
-        <div class="turnbig">
-          <div class="nm">全員のBETが完了</div>
-          <div class="ms">請求項1〜2を開示します</div>
-          <div style="margin-top:18px"><button class="primary" id="btnReveal">開　票</button></div>
-        </div>
+    <div class="board" id="board"></div>
+
+    <div class="selbox hide" id="selBox">
+      <div class="selchips" id="selChips"></div>
+      <div class="chipbtns">
+        <button class="chipbtn" data-v="1">1</button>
+        <button class="chipbtn" data-v="3">3</button>
+        <button class="chipbtn" data-v="5">5</button>
+        <button class="chipbtn" data-v="max">MAX</button>
       </div>
     </div>
+    <div class="warn" id="betWarn"></div>
   </section>
 
-  <!-- ============ 開票結果 ============ -->
-  <section id="scResult" class="hide">
-    <div class="pbar" id="pbar2"></div>
+  <!-- ===== 開票 ===== -->
+  <section id="scReveal" class="hide">
+    <div class="revhead"><div class="big">開　票</div></div>
+    <div class="revlist" id="revList"></div>
+  </section>
+
+  <!-- ===== スコア ===== -->
+  <section id="scScore" class="hide">
+    <div class="revhead"><div class="big" style="font-size:23px">このラウンドの収支</div></div>
+    <div id="scoreList"></div>
+  </section>
+
+  <!-- ===== 請求項 ===== -->
+  <section id="scClaims" class="hide">
+    <div class="revhead"><div class="big" style="font-size:23px">答え合わせ</div></div>
+    <div id="lessonBox"></div>
     <div class="card">
-      <h2>請求項</h2>
-      <div class="muted" style="margin-bottom:10px">
-        <mark class="hl">黄色</mark> = ボードにあった正解語 ／ <mark class="hl bet">緑</mark> = 誰かが賭けて的中した語
+      <div style="font-size:11.5px;color:var(--mute);margin-bottom:9px">
+        <mark class="hl">黄</mark> ボードにあった正解語 ／ <mark class="hl bet">緑</mark> 誰かが的中させた語
       </div>
       <div id="claimBox"></div>
-      <div class="muted" id="srcInfo"></div>
-    </div>
-
-    <div class="card">
-      <h2>ボード結果</h2>
-      <div class="board" id="boardResult"></div>
-    </div>
-
-    <div class="card">
-      <h2>精算</h2>
-      <div id="settleBox"></div>
-      <div class="stepnav">
-        <span class="muted" id="nextInfo"></span>
-        <button class="primary" id="btnNext">次のラウンドへ</button>
-      </div>
+      <div id="srcInfo" style="font-size:11px;color:var(--mute);margin-top:8px"></div>
     </div>
   </section>
 
-  <!-- ============ 最終結果 ============ -->
+  <!-- ===== 最終結果 ===== -->
   <section id="scFinal" class="hide">
+    <div class="brand"><h1>最 終 結 果</h1></div>
+    <div class="card"><div id="podium"></div></div>
     <div class="card">
-      <h2>最終結果</h2>
-      <div class="podium" id="podium"></div>
+      <div style="font-size:11px;letter-spacing:.13em;color:var(--gold);margin-bottom:7px">チップ推移</div>
+      <div style="overflow-x:auto"><table id="histTable"></table></div>
     </div>
-    <div class="card">
-      <h2>チップ推移</h2>
-      <div style="overflow-x:auto"><table id="historyTable"></table></div>
-      <div class="row" style="margin-top:16px">
-        <button class="primary" id="btnAgain">もう一度あそぶ</button>
-        <button class="ghost" id="btnBackTop">設定に戻る</button>
-      </div>
+    <div class="grid2">
+      <button class="btn gold" id="btnAgain">もう一度</button>
+      <button class="btn" id="btnTop">設定に戻る</button>
     </div>
+  </section>
+
+  <!-- ===== 収録問題一覧 ===== -->
+  <section id="scData" class="hide">
+    <div class="brand"><h1>収 録 問 題</h1></div>
+    <div class="card"><div id="dataList"></div></div>
+    <button class="btn" id="btnDataBack">戻る</button>
   </section>
 </div>
 
+<!-- ===== 下部バー ===== -->
+<div class="bottombar hide" id="bottombar">
+  <div class="info" id="barInfo"></div>
+  <button class="btn gold" id="barBtn"></button>
+</div>
+
 <script>
-/* ===== 問題データ（build.py が data/*.json から埋め込む） ===== */
+/* ===================== データ ===================== */
 const DATA = __QUESTIONS_JSON__;
 
-/* ===== 定数 ===== */
-const MAX_WORDS = 3;        // 1ラウンドに賭けられるワード数
-const BOARD_HIT = 4;        // ボードに出す正解語の数
-const BOARD_MIS = 8;        // ボードに出す罠語の数（的中率33%。50%だと倍率に対して当たりすぎる）
-const BAILOUT   = 3;        // 破産時の救済チップ
-const BET_RATIO = 0.5;      // 1ラウンドに賭けられるのは所持チップのこの割合まで
-const BET_FLOOR = 3;        // ただし最低この枚数までは賭けられる
-const betLimit = chips => Math.max(BET_FLOOR, Math.floor(chips * BET_RATIO));
+/* ===================== 定数 ===================== */
+const MAX_WORDS = 3;      // 1ラウンドに賭けられるワード数
+const BOARD_HIT = 4;      // ボードに出す正解語
+const BOARD_MIS = 8;      // ボードに出す罠語（的中率33%）
+const BAILOUT   = 3;      // 破産救済
+const BET_RATIO = 0.5;    // 1ラウンドの上限＝所持の半分
+const BET_FLOOR = 3;
+const HOLD_MS   = 700;    // 手番交代の長押し時間
+const RECENT_KEY = 'pc_recent_ids';
 const PCOLOR = ['var(--p1)','var(--p2)','var(--p3)','var(--p4)'];
 
-/* ===== 状態 ===== */
-let S = null;
 let items = (DATA && DATA.items) ? DATA.items.slice() : [];
+let S = null;
 
-/* ===== ユーティリティ ===== */
+/* ===================== 小道具 ===================== */
 const $ = id => document.getElementById(id);
-const shuffle = a => { for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const shuffle = a => { for(let i=a.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[a[i],a[j]]=[a[j],a[i]];} return a; };
 const bodyOf = it => it.claims.map(c => c.text).join('\n');
-const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const band = o => o < 2.5 ? 0 : (o <= 7 ? 1 : 2);
+const betLimit = c => Math.max(BET_FLOOR, Math.floor(c * BET_RATIO));
+const splitWords = it => {
+  const b = bodyOf(it);
+  return [it.words.filter(w => b.includes(w.w)), it.words.filter(w => !b.includes(w.w))];
+};
+const isUsable = it => { const [h,m] = splitWords(it); return h.length >= BOARD_HIT && m.length >= BOARD_MIS; };
 
-/* ボード生成: 正解語・罠語をオッズ帯バランスを見て抽出する */
+/* 直近に出した問題を避ける（3問しかないと「またこれか」になるため） */
+function readRecent(){
+  try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch(e){ return []; }
+}
+function writeRecent(ids){
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify(ids)); } catch(e){}
+}
+function orderQuestions(pool){
+  const recent = readRecent();
+  const fresh = shuffle(pool.filter(q => recent.indexOf(q.id) < 0));
+  const used  = shuffle(pool.filter(q => recent.indexOf(q.id) >= 0));
+  return fresh.concat(used);
+}
+
 function makeBoard(it){
-  const body = bodyOf(it);
-  const hit = it.words.filter(w => body.includes(w.w));
-  const mis = it.words.filter(w => !body.includes(w.w));
+  const [hit, mis] = splitWords(it);
   const pick = (pool, n) => {
     const by = [[],[],[]];
     shuffle(pool.slice()).forEach(w => by[band(w.odds)].push(w));
-    const out = [];
-    const quota = [Math.floor(n/3), Math.ceil(n/3), n - Math.floor(n/3) - Math.ceil(n/3)];
-    for (let b=0; b<3; b++) for (let k=0; k<quota[b] && by[b].length; k++) out.push(by[b].pop());
+    const out = [], quota = [Math.floor(n/3), Math.ceil(n/3), n - Math.floor(n/3) - Math.ceil(n/3)];
+    for (let b=0;b<3;b++) for (let k=0;k<quota[b] && by[b].length;k++) out.push(by[b].pop());
     const rest = shuffle([].concat(by[0],by[1],by[2]));
     while (out.length < n && rest.length) out.push(rest.pop());
     return out;
   };
-  const board = pick(hit, BOARD_HIT).concat(pick(mis, BOARD_MIS));
-  board.forEach(w => { w.isHit = body.includes(w.w); });
+  const board = pick(hit, BOARD_HIT).map(w => Object.assign({}, w, {isHit:true}))
+    .concat(pick(mis, BOARD_MIS).map(w => Object.assign({}, w, {isHit:false})));
   return shuffle(board);
 }
 
-/* ===== セットアップ ===== */
+function show(id){
+  ['scSetup','scBet','scReveal','scScore','scClaims','scFinal','scData']
+    .forEach(s => $(s).classList.toggle('hide', s !== id));
+  window.scrollTo(0,0);
+}
+function bar(info, label, on, disabled){
+  $('bottombar').classList.toggle('hide', !on);
+  if (!on) return;
+  $('barInfo').innerHTML = info;
+  $('barBtn').textContent = label;
+  $('barBtn').disabled = !!disabled;
+}
+
+/* ===================== セットアップ ===================== */
 function initSetup(){
   const np = $('nPlayers'), sc = $('startChips'), nr = $('nRounds');
-  np.innerHTML=''; sc.innerHTML=''; nr.innerHTML='';
+  const pool = items.filter(isUsable);
+  np.innerHTML = sc.innerHTML = nr.innerHTML = '';
   [2,3,4].forEach(n => np.add(new Option(n+'人', n)));
   [20,30,50].forEach(n => sc.add(new Option(n+'枚', n)));
   np.value = 2; sc.value = 20;
-  const maxR = Math.max(1, items.length);
-  for (let i=1; i<=maxR; i++) nr.add(new Option(i+'ラウンド', i));
-  nr.value = Math.min(3, maxR);
+  for (let i=1;i<=Math.max(1,pool.length);i++) nr.add(new Option(i+'回', i));
+  nr.value = Math.min(3, Math.max(1,pool.length));
   np.onchange = renderNames;
   renderNames();
-  $('dataInfo').textContent = '収録 ' + items.length + ' 問';
+  const ng = items.length - pool.length;
+  $('dataInfo').textContent = '収録 ' + pool.length + ' 問' +
+    (ng ? '（データ不足で除外 ' + ng + ' 問）' : '');
+  bar('', '', false);
+  $('topbar').classList.add('hide');
 }
 function renderNames(){
   const n = +$('nPlayers').value, box = $('nameInputs');
-  const old = [...box.querySelectorAll('input')].map(i => i.value);
+  const old = [].map.call(box.querySelectorAll('input'), i => i.value);
   box.innerHTML = '';
   for (let i=0;i<n;i++){
     const inp = document.createElement('input');
-    inp.type='text'; inp.maxLength=10; inp.style.width='140px';
-    inp.placeholder = 'プレイヤー'+(i+1);
+    inp.type='text'; inp.maxLength=8; inp.placeholder='プレイヤー'+(i+1);
     inp.value = old[i] || '';
     box.appendChild(inp);
   }
 }
 
-/* ===== ゲーム開始 ===== */
 function startGame(){
-  const names = [...$('nameInputs').querySelectorAll('input')]
-    .map((inp,i) => inp.value.trim() || ('プレイヤー'+(i+1)));
-  if (new Set(names).size !== names.length){ $('setupWarn').textContent='名前が重複しています'; return; }
-  if (!items.length){ $('setupWarn').textContent='問題データがありません'; return; }
+  const pool = items.filter(isUsable);
+  if (!pool.length){ $('setupWarn').textContent = '遊べる問題がありません'; return; }
+  const names = [].map.call($('nameInputs').querySelectorAll('input'),
+    (inp,i) => inp.value.trim() || ('プレイヤー'+(i+1)));
+  if (new Set(names).size !== names.length){ $('setupWarn').textContent = '名前が重複しています'; return; }
   $('setupWarn').textContent = '';
   const chips = +$('startChips').value;
   S = {
-    players: names.map((nm,i) => ({name:nm, chips, color:PCOLOR[i], hist:[]})),
+    players: names.map((nm,i) => ({name:nm, chips:chips, color:PCOLOR[i], hist:[]})),
+    startChips: chips,
     rounds: +$('nRounds').value,
-    order: shuffle(items.slice()),
-    ri: 0, turn: 0, board: [], bets: []
+    order: orderQuestions(pool),
+    ri:0, turn:0, board:[], bets:[], active:null
   };
+  writeRecent(S.order.slice(0, S.rounds).map(q => q.id));
+  $('topbar').classList.remove('hide');
   beginRound();
 }
 
 function beginRound(){
-  const it = S.order[S.ri];
-  S.board = makeBoard(it);
+  S.players.forEach(p => { if (p.chips <= 0) p.chips = BAILOUT; });
+  S.board = makeBoard(S.order[S.ri]);
   S.bets = S.players.map(() => ({}));
   S.turn = 0;
-  // 破産救済
-  S.players.forEach(p => { if (p.chips <= 0) p.chips = BAILOUT; });
+  S.active = null;
+  renderQuestion();
+  renderTop();
+  handoff();
+}
 
-  $('roundLabel').textContent = 'ROUND ' + (S.ri+1) + ' / ' + S.rounds;
+function renderQuestion(){
+  const it = S.order[S.ri];
   $('qTitle').innerHTML = esc(it.title) +
-    (it.source === 'fictional' ? '<span class="fic">架空・動作確認用</span>' : '');
+    (it.source === 'fictional' ? '<span class="fic">架空</span>' : '');
   $('qMeta').innerHTML = [
-    it.assignee ? '出願人：'+esc(it.assignee) : '',
-    it.date ? '出願年：'+esc(String(it.date)) : '',
-    it.ipc ? 'IPC：'+esc(it.ipc) : '',
-    it.num && it.num !== '架空' ? esc(it.num) : ''
-  ].filter(Boolean).map(t => '<span class="chipmeta">'+t+'</span>').join('');
+    it.assignee ? '出願人：'+it.assignee : '',
+    it.date ? String(it.date) : '',
+    it.ipc ? 'IPC '+it.ipc : ''
+  ].filter(Boolean).map(t => '<span>'+esc(t)+'</span>').join('');
   $('qHint').textContent = it.hint || '';
-
-  show('scRound');
-  renderPbar();
-  enterTurn();
+  $('rndLabel').textContent = 'R' + (S.ri+1) + '/' + S.rounds;
+}
+function renderTop(){
+  $('ptags').innerHTML = S.players.map((p,i) =>
+    '<div class="ptag'+(i===S.turn && S.turn<S.players.length ? ' now':'')+'">'+
+    '<span class="dot" style="background:'+p.color+'"></span>'+esc(p.name)+
+    ' <b>'+p.chips+'</b></div>').join('');
 }
 
-function enterTurn(){
-  if (S.turn >= S.players.length){
-    $('betArea').classList.add('hide');
-    $('passArea').classList.add('hide');
-    $('revealArea').classList.remove('hide');
-    return;
-  }
-  // 2人目以降は交代画面を挟む
-  if (S.turn > 0){
-    $('betArea').classList.add('hide');
-    $('revealArea').classList.add('hide');
-    $('passArea').classList.remove('hide');
-    $('nextName').textContent = S.players[S.turn].name;
-    $('nextName').style.color = S.players[S.turn].color;
-  } else {
-    showBet();
-  }
-  renderPbar();
-}
-
-function showBet(){
-  $('passArea').classList.add('hide');
-  $('revealArea').classList.add('hide');
-  $('betArea').classList.remove('hide');
+/* ===================== 手番交代 ===================== */
+let holdTimer = null, holdStart = 0;
+function handoff(){
   const p = S.players[S.turn];
-  $('betWho').innerHTML = '<span style="color:'+p.color+'">'+esc(p.name)+'</span> の BET';
-  $('betStatus').textContent = '所持 ' + p.chips + ' 枚 ／ 最大 ' + MAX_WORDS +
-    ' ワード ／ このラウンドは合計 ' + Math.min(p.chips, betLimit(p.chips)) + ' 枚まで';
+  $('hoWho').textContent = p.name;
+  $('hoWho').style.color = p.color;
+  $('holdSub').textContent = '所持 ' + p.chips + ' 枚';
+  $('holdFill').style.transform = 'scaleY(0)';
+  $('holdBtn').classList.remove('done');
+  $('handoff').classList.remove('hide');
+  bar('', '', false);
+}
+function holdBegin(ev){
+  ev.preventDefault();
+  if (holdTimer) return;
+  holdStart = Date.now();
+  // requestAnimationFrame は画面が隠れると止まるので setInterval を使う
+  holdTimer = setInterval(() => {
+    const r = Math.min(1, (Date.now() - holdStart) / HOLD_MS);
+    $('holdFill').style.transform = 'scaleY(' + r + ')';
+    if (r >= 1){
+      $('holdBtn').classList.add('done');
+      holdEnd(true);
+    }
+  }, 16);
+}
+function holdCancel(){
+  if (holdTimer) clearInterval(holdTimer);
+  holdTimer = null;
+  $('holdFill').style.transform = 'scaleY(0)';
+}
+function holdEnd(ok){
+  if (holdTimer) clearInterval(holdTimer);
+  holdTimer = null;
+  if (!ok) { $('holdFill').style.transform = 'scaleY(0)'; return; }
+  setTimeout(() => {
+    $('handoff').classList.add('hide');
+    $('holdFill').style.transform = 'scaleY(0)';
+    $('holdBtn').classList.remove('done');
+    enterBet();
+  }, 130);
+}
+
+/* ===================== BET ===================== */
+function enterBet(){
+  S.active = null;
+  renderTop();
+  show('scBet');
+  $('barBtn').onclick = confirmBet;
   renderBoard();
-  updateBetSummary();
+  updateBetUI();
 }
 
 function renderBoard(){
-  const box = $('board'); box.innerHTML = '';
-  const bet = S.bets[S.turn];
-  S.board.forEach((w, i) => {
-    const amt = bet[w.w] || 0;
-    const d = document.createElement('div');
-    d.className = 'wcard' + (amt > 0 ? ' sel' : '');
-    d.innerHTML =
-      '<div class="w">'+esc(w.w)+'</div>'+
-      '<div class="o">'+w.odds.toFixed(1)+' 倍</div>'+
-      '<div class="ctl">'+
-        '<button data-i="'+i+'" data-d="-1">−</button>'+
-        '<span class="amt">'+amt+'</span>'+
-        '<button data-i="'+i+'" data-d="1">＋</button>'+
-        '<button data-i="'+i+'" data-d="5">+5</button>'+
-      '</div>';
-    box.appendChild(d);
-  });
-  box.querySelectorAll('button').forEach(b => b.onclick = () => {
-    changeBet(+b.dataset.i, +b.dataset.d);
-  });
-}
-
-function changeBet(i, delta){
-  const w = S.board[i], bet = S.bets[S.turn], p = S.players[S.turn];
-  const cur = bet[w.w] || 0;
-  const total = Object.values(bet).reduce((a,b)=>a+b, 0);
-  let next = cur + delta;
-  if (next < 0) next = 0;
-  // ワード数上限
-  if (cur === 0 && next > 0){
-    const used = Object.keys(bet).filter(k => bet[k] > 0).length;
-    if (used >= MAX_WORDS){ warnBet('賭けられるのは'+MAX_WORDS+'ワードまでです'); return; }
-  }
-  // 1ラウンドの上限（所持の半分。全額突っ込んで最終ラウンドだけで決着するのを防ぐ）
-  const lim = Math.min(p.chips, betLimit(p.chips));
-  if (total - cur + next > lim){
-    next = lim - (total - cur);
-    if (next <= cur){ warnBet('このラウンドは合計 '+lim+' 枚までです（所持 '+p.chips+' 枚）'); return; }
-  }
-  if (next === 0) delete bet[w.w]; else bet[w.w] = next;
-  warnBet('');
-  updateCard(i); updateBetSummary();
-}
-/* カード全体を作り直すとちらつくので枚数と選択状態だけ差し替える */
-function updateCard(i){
-  const card = $('board').children[i];
-  if (!card) return;
-  const amt = S.bets[S.turn][S.board[i].w] || 0;
-  card.querySelector('.amt').textContent = amt;
-  card.classList.toggle('sel', amt > 0);
-}
-function warnBet(m){ $('betWarn').textContent = m; }
-
-function updateBetSummary(){
-  const bet = S.bets[S.turn];
-  const words = Object.keys(bet).filter(k => bet[k] > 0);
-  const total = words.reduce((a,k) => a + bet[k], 0);
-  $('betSummary').textContent = words.length
-    ? words.length + 'ワード / 合計 ' + total + ' 枚'
-    : '1ワード以上に賭けてください';
-  $('btnBetDone').disabled = (words.length === 0);
-}
-
-function renderPbar(){
-  const html = S.players.map((p,i) =>
-    '<div class="ptag'+(i===S.turn && S.turn<S.players.length ? ' now':'')+'">'+
-      '<span class="dot" style="background:'+p.color+'"></span>'+
-      esc(p.name)+' <span class="c">'+p.chips+'</span>'+
-    '</div>').join('');
-  $('pbar').innerHTML = html;
-  $('pbar2').innerHTML = S.players.map(p =>
-    '<div class="ptag"><span class="dot" style="background:'+p.color+'"></span>'+
-    esc(p.name)+' <span class="c">'+p.chips+'</span></div>').join('');
-}
-
-/* ===== 開票 ===== */
-function reveal(){
-  const it = S.order[S.ri];
-
-  // 誰かが賭けて的中した語
-  const betHitWords = new Set();
-  S.board.forEach(w => {
-    if (!w.isHit) return;
-    if (S.bets.some(b => (b[w.w]||0) > 0)) betHitWords.add(w.w);
-  });
-
-  // 請求項の表示（ボードにあった正解語をハイライト）
-  const boardHits = S.board.filter(w => w.isHit).map(w => w.w);
-  $('claimBox').innerHTML = it.claims.map(c =>
-    '<div class="claim"><span class="cn">請求項 '+esc(c.num)+'</span>\n' +
-    highlight(c.text, boardHits, betHitWords) + '</div>'
-  ).join('');
-  $('srcInfo').innerHTML = it.source === 'fictional'
-    ? '※ この設問は動作確認用の架空明細書です。実在特許ではありません。'
-    : (it.url ? '出典：<span style="color:var(--gold)">'+esc(it.num)+'</span>　'+esc(it.url) : '');
-
-  // ボード結果
-  $('boardResult').innerHTML = S.board.map(w => {
-    const bettors = S.players.map((p,i) => ({p, a: S.bets[i][w.w]||0})).filter(x => x.a > 0);
-    const who = bettors.map(x =>
-      '<span style="color:'+x.p.color+'">'+esc(x.p.name)+' '+x.a+'枚</span>').join(' / ');
-    return '<div class="wcard '+(w.isHit?'hit':'mis')+'">'+
-      '<span class="badge '+(w.isHit?'hit':'mis')+'">'+(w.isHit?'出た':'出ない')+'</span>'+
-      '<div class="w">'+esc(w.w)+'</div>'+
-      '<div class="o">'+w.odds.toFixed(1)+' 倍</div>'+
-      '<div class="muted" style="margin-top:6px;min-height:16px">'+(who||'　')+'</div>'+
-    '</div>';
+  const bets = S.bets[S.turn];
+  const full = Object.keys(bets).length >= MAX_WORDS;
+  $('board').innerHTML = S.board.map((w,i) => {
+    const on = bets[w.w] !== undefined;
+    const no = on ? (Object.keys(bets).indexOf(w.w) + 1) : 0;
+    return '<button class="wcard'+(on?' sel':'')+((!on && full)?' dim':'')+'" data-i="'+i+'">'+
+      (on ? '<span class="no">'+no+'</span>' : '') +
+      '<span class="w">'+esc(w.w)+'</span>'+
+      '<span class="o">'+w.odds.toFixed(1)+' 倍</span>'+
+      (on ? '<span class="amt">'+bets[w.w]+'枚</span>' : '')+
+    '</button>';
   }).join('');
+  [].forEach.call($('board').querySelectorAll('.wcard'), b => {
+    b.onclick = () => toggleWord(+b.dataset.i);
+  });
+}
 
-  // 精算
-  let rows = '<tr><th>プレイヤー</th><th>賭け</th><th class="num">投入</th><th class="num">払戻</th><th class="num">増減</th><th class="num">残高</th></tr>';
-  S.players.forEach((p,i) => {
-    const bet = S.bets[i];
+function toggleWord(i){
+  const w = S.board[i].w, bets = S.bets[S.turn], p = S.players[S.turn];
+  if (bets[w] !== undefined){
+    delete bets[w];
+    if (S.active === w) S.active = Object.keys(bets)[0] || null;
+  } else {
+    if (Object.keys(bets).length >= MAX_WORDS){
+      warn('3語まで。外したい語をもう一度押すと解除できます'); return;
+    }
+    const lim = Math.min(p.chips, betLimit(p.chips));
+    const used = Object.keys(bets).reduce((a,k) => a + bets[k], 0);
+    if (used >= lim){ warn('賭けられるチップが残っていません'); return; }
+    bets[w] = 1;
+    S.active = w;
+  }
+  warn('');
+  renderBoard(); updateBetUI();
+}
+
+function updateBetUI(){
+  const bets = S.bets[S.turn], p = S.players[S.turn];
+  const words = Object.keys(bets);
+  const lim = Math.min(p.chips, betLimit(p.chips));
+  const used = words.reduce((a,k) => a + bets[k], 0);
+
+  $('selCount').textContent = words.length + ' / ' + MAX_WORDS + ' WORDS SELECTED';
+  $('remain').textContent = (lim - used);
+
+  $('st1').classList.toggle('on', words.length === 0);
+  $('st2').classList.toggle('on', words.length > 0);
+  $('st3').classList.toggle('on', words.length > 0 && used > 0);
+
+  $('selBox').classList.toggle('hide', words.length === 0);
+  if (!S.active && words.length) S.active = words[0];
+  $('selChips').innerHTML = words.map(w =>
+    '<button class="selchip'+(w === S.active ? ' act':'')+'" data-w="'+esc(w)+'">'+
+    esc(w)+' <b>'+bets[w]+'</b>枚 <span class="x">×</span></button>').join('');
+  [].forEach.call($('selChips').querySelectorAll('.selchip'), b => {
+    b.onclick = ev => {
+      const w = b.dataset.w;
+      if (ev.target.classList.contains('x')){
+        delete bets[w];
+        if (S.active === w) S.active = Object.keys(bets)[0] || null;
+        renderBoard();
+      } else {
+        S.active = w;
+      }
+      updateBetUI();
+    };
+  });
+
+  [].forEach.call(document.querySelectorAll('.chipbtn'), b => {
+    b.disabled = !S.active;
+    b.onclick = () => setAmount(b.dataset.v);
+  });
+
+  bar('<b>'+(lim - used)+'</b> 枚 残り<br>' + words.length + ' 語に ' + used + ' 枚',
+      'BET確定', true, words.length === 0 || used === 0);
+}
+
+function setAmount(v){
+  const bets = S.bets[S.turn], p = S.players[S.turn];
+  if (!S.active) return;
+  const lim = Math.min(p.chips, betLimit(p.chips));
+  const others = Object.keys(bets).reduce((a,k) => a + (k === S.active ? 0 : bets[k]), 0);
+  const room = lim - others;
+  let n = (v === 'max') ? room : Math.min(+v, room);
+  if (n < 1) { warn('残りチップが足りません'); return; }
+  bets[S.active] = n;
+  warn('');
+  renderBoard(); updateBetUI();
+}
+function warn(m){ $('betWarn').textContent = m; }
+
+function confirmBet(){
+  S.turn++;
+  if (S.turn >= S.players.length){
+    settle();
+    reveal();
+  } else {
+    renderTop();
+    handoff();
+  }
+}
+
+/* ===================== 精算 ===================== */
+function settle(){
+  S.settle = S.players.map((p,i) => {
+    const bets = S.bets[i];
     let stake = 0, payout = 0;
-    const detail = Object.keys(bet).map(k => {
-      const a = bet[k], w = S.board.find(x => x.w === k);
+    const detail = Object.keys(bets).map(k => {
+      const w = S.board.filter(x => x.w === k)[0], a = bets[k];
       stake += a;
       const pay = w.isHit ? Math.floor(a * w.odds) : 0;
       payout += pay;
-      return '<span style="color:'+(w.isHit?'#6ee7a0':'#ff8b8b')+'">'+esc(k)+' '+a+'枚'+
-             (w.isHit ? ' →'+pay : ' ×')+'</span>';
-    }).join('<br>');
-    const diff = payout - stake;
+      return {w:k, a:a, hit:w.isHit, pay:pay, odds:w.odds};
+    });
     p.chips = p.chips - stake + payout;
     p.hist.push(p.chips);
-    rows += '<tr>'+
-      '<td><span class="dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'+p.color+';margin-right:7px"></span>'+esc(p.name)+'</td>'+
-      '<td style="font-size:12px;line-height:1.7">'+(detail||'—')+'</td>'+
-      '<td class="num">'+stake+'</td>'+
-      '<td class="num">'+payout+'</td>'+
-      '<td class="num '+(diff>=0?'plus':'minus')+'">'+(diff>=0?'+':'')+diff+'</td>'+
-      '<td class="num"><b style="color:var(--gold)">'+p.chips+'</b></td>'+
-    '</tr>';
+    return {stake:stake, payout:payout, detail:detail};
   });
-  $('settleBox').innerHTML = '<table>'+rows+'</table>';
-
-  const last = (S.ri + 1 >= S.rounds);
-  $('btnNext').textContent = last ? '最終結果を見る' : '次のラウンドへ';
-  $('nextInfo').textContent = last ? '' : '残り ' + (S.rounds - S.ri - 1) + ' ラウンド';
-
-  show('scResult');
-  renderPbar();
-  window.scrollTo(0,0);
 }
 
-/* 請求項本文中の語をハイライト。長い語を優先して重複マークを防ぐ */
+/* ===================== 開票 ===================== */
+function reveal(){
+  show('scReveal');
+  renderTop();
+  const rows = S.board.slice().sort((a,b) => (b.isHit - a.isHit) || (b.odds - a.odds));
+  const box = $('revList');
+  box.innerHTML = '';
+  bar('', '', false);
+
+  rows.forEach((w, k) => {
+    setTimeout(() => {
+      const bettors = S.players.map((p,i) => ({p:p, a:S.bets[i][w.w]})).filter(x => x.a);
+      const big = w.isHit && w.odds >= 8 && bettors.length;
+      const d = document.createElement('div');
+      d.className = 'revrow ' + (w.isHit ? 'hit' : 'mis') + (big ? ' big-win' : '');
+      d.style.animationDelay = '0s';
+      d.innerHTML =
+        '<span class="mk">' + (w.isHit ? '⭕' : '❌') + '</span>' +
+        '<span class="w">' + esc(w.w) + '</span>' +
+        '<span class="o">' + w.odds.toFixed(1) + '倍' + (big ? ' 🎉' : '') + '</span>' +
+        (bettors.length
+          ? '<span class="bettors">' + bettors.map(x =>
+              '<span style="color:'+x.p.color+'">'+esc(x.p.name)+' '+x.a+'枚'+
+              (w.isHit ? ' → +'+Math.floor(x.a*w.odds) : '')+'</span>').join('　') + '</span>'
+          : '');
+      box.appendChild(d);
+      if (k === rows.length - 1){
+        bar('12語のうち請求項に出たのは' + BOARD_HIT + '語', '収支を見る', true);
+        $('barBtn').onclick = showScore;
+      }
+    }, 220 * k);
+  });
+}
+
+function showScore(){
+  show('scScore');
+  const box = $('scoreList');
+  box.innerHTML = '';
+  const order = S.players.map((p,i) => i)
+    .sort((a,b) => (S.settle[b].payout - S.settle[b].stake) - (S.settle[a].payout - S.settle[a].stake));
+  order.forEach((idx, k) => {
+    const p = S.players[idx], s = S.settle[idx], diff = s.payout - s.stake;
+    const d = document.createElement('div');
+    d.className = 'scorerow';
+    d.style.animationDelay = (k * 0.16) + 's';
+    d.innerHTML =
+      '<span class="dot" style="width:10px;height:10px;border-radius:50%;background:'+p.color+'"></span>'+
+      '<span class="nm">'+esc(p.name)+
+        '<span class="detail">'+ (s.detail.map(x =>
+          x.hit ? '<span style="color:#6ee7a0">'+esc(x.w)+' +'+x.pay+'</span>'
+                : '<span style="color:#ff8b8b">'+esc(x.w)+' ×</span>').join('　') || '—') +'</span>'+
+      '</span>'+
+      '<span class="df '+(diff>=0?'plus':'minus')+'">'+(diff>=0?'+':'')+diff+'</span>'+
+      '<span class="tot">合計<b>'+p.chips+'</b></span>';
+    box.appendChild(d);
+  });
+  bar('この単語がなぜ出たのか確認できます', '請求項を見る', true);
+  $('barBtn').onclick = showClaims;
+}
+
+/* ===================== 答え合わせ ===================== */
+function showClaims(){
+  show('scClaims');
+  const it = S.order[S.ri];
+  const boardHits = S.board.filter(w => w.isHit).map(w => w.w);
+  const betHits = {};
+  S.board.forEach(w => {
+    if (w.isHit && S.bets.some(b => b[w.w])) betHits[w.w] = 1;
+  });
+
+  // 罠のうち「日常語だが明細書では別の言い方をする」ものを解説として拾う
+  const traps = S.board.filter(w => !w.isHit);
+  $('lessonBox').innerHTML = traps.length
+    ? '<div class="lesson">出そうで<b>出なかった</b>のは ' +
+      traps.slice(0,4).map(w => '「'+esc(w.w)+'」').join('、') +
+      ' 。明細書では別の言葉に置き換わっていることが多い。</div>'
+    : '';
+
+  $('claimBox').innerHTML = it.claims.map(c =>
+    '<div class="claim"><span class="cn">請求項 '+esc(c.num)+'</span>\n' +
+    highlight(c.text, boardHits, betHits) + '</div>').join('');
+  $('srcInfo').innerHTML = it.source === 'fictional'
+    ? '※ 動作確認用の架空明細書です。実在特許ではありません。'
+    : (it.url ? '出典：'+esc(it.num)+'　'+esc(it.url) : '');
+
+  const last = (S.ri + 1 >= S.rounds);
+  bar(last ? '' : '残り ' + (S.rounds - S.ri - 1) + ' ラウンド',
+      last ? '最終結果' : '次のラウンド', true);
+  $('barBtn').onclick = () => {
+    if (last){ finish(); return; }
+    S.ri++; beginRound();
+  };
+}
+
 function highlight(text, words, betSet){
   const ws = words.slice().sort((a,b) => b.length - a.length);
-  const marks = [];   // {s,e,w}
+  const marks = [];
   ws.forEach(w => {
-    let from = 0, idx;
-    while ((idx = text.indexOf(w, from)) !== -1){
-      const s = idx, e = idx + w.length;
-      if (!marks.some(m => s < m.e && e > m.s)) marks.push({s, e, w});
-      from = idx + 1;
+    let from = 0, i;
+    while ((i = text.indexOf(w, from)) !== -1){
+      const s = i, e = i + w.length;
+      if (!marks.some(m => s < m.e && e > m.s)) marks.push({s:s, e:e, w:w});
+      from = i + 1;
     }
   });
   marks.sort((a,b) => a.s - b.s);
   let out = '', pos = 0;
   marks.forEach(m => {
     out += esc(text.slice(pos, m.s));
-    out += '<mark class="hl'+(betSet.has(m.w) ? ' bet' : '')+'">'+esc(text.slice(m.s, m.e))+'</mark>';
+    out += '<mark class="hl'+(betSet[m.w] ? ' bet':'')+'">'+esc(text.slice(m.s, m.e))+'</mark>';
     pos = m.e;
   });
-  out += esc(text.slice(pos));
-  return out;
+  return out + esc(text.slice(pos));
 }
 
-/* ===== 最終結果 ===== */
+/* ===================== 最終結果 ===================== */
 function finish(){
-  const rank = S.players.map((p,i) => ({p, i})).sort((a,b) => b.p.chips - a.p.chips);
-  $('podium').innerHTML = rank.map((r, k) => {
-    const tie = k > 0 && r.p.chips === rank[k-1].p.chips;
-    const pos = tie ? '=' : (k+1);
-    return '<div class="prow'+(k===0?' win':'')+'">'+
-      '<div class="rk">'+pos+'</div>'+
-      '<div class="nm" style="color:'+r.p.color+'">'+esc(r.p.name)+'</div>'+
-      '<div class="ch">'+r.p.chips+' <span style="font-size:13px;color:#9fb8ae">枚</span></div>'+
-    '</div>';
-  }).join('');
-
-  let head = '<tr><th>プレイヤー</th>';
-  for (let i=0;i<S.rounds;i++) head += '<th class="num">R'+(i+1)+'</th>';
-  head += '</tr>';
-  const body = S.players.map(p => {
-    let tr = '<tr><td><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'+p.color+';margin-right:7px"></span>'+esc(p.name)+'</td>';
-    p.hist.forEach(v => tr += '<td class="num">'+v+'</td>');
-    return tr + '</tr>';
-  }).join('');
-  $('historyTable').innerHTML = head + body;
   show('scFinal');
-  window.scrollTo(0,0);
+  $('topbar').classList.add('hide');
+  bar('', '', false);
+  const rank = S.players.slice().sort((a,b) => b.chips - a.chips);
+  let prev = null;
+  $('podium').innerHTML = rank.map((p,k) => {
+    const pos = (prev === p.chips) ? '=' : (k+1);
+    prev = p.chips;
+    return '<div class="prow'+(k===0?' win':'')+'"><div class="rk">'+pos+'</div>'+
+      '<div class="nm" style="color:'+p.color+'">'+esc(p.name)+'</div>'+
+      '<div class="ch">'+p.chips+'</div></div>';
+  }).join('');
+  let head = '<tr><th>プレイヤー</th>';
+  for (let i=0;i<S.rounds;i++) head += '<th class="n">R'+(i+1)+'</th>';
+  $('histTable').innerHTML = head + '</tr>' + S.players.map(p =>
+    '<tr><td>'+esc(p.name)+'</td>' + p.hist.map(v => '<td class="n">'+v+'</td>').join('') + '</tr>'
+  ).join('');
 }
 
-/* ===== 画面切替 ===== */
-function show(id){
-  ['scSetup','scRound','scResult','scFinal'].forEach(s => {
-    $(s).classList.toggle('hide', s !== id);
-  });
+/* ===================== 収録問題一覧 ===================== */
+function showData(){
+  show('scData');
+  $('dataList').innerHTML = items.map(it => {
+    const [h,m] = splitWords(it);
+    const ok = isUsable(it);
+    return '<div style="padding:9px 0;border-bottom:1px solid rgba(255,255,255,.1)">'+
+      '<div style="font-size:15px;font-weight:700">'+esc(it.title)+
+        (it.source==='fictional' ? '<span class="fic">架空</span>' : '')+'</div>'+
+      '<div style="font-size:11.5px;color:var(--mute);margin-top:3px">'+
+        esc(it.assignee||'')+'　正解語 '+h.length+' / 罠語 '+m.length+
+        (ok ? '' : '　<span style="color:#ff8b8b">データ不足のため使用不可</span>')+'</div></div>';
+  }).join('');
 }
 
-/* ===== イベント ===== */
+/* ===================== イベント ===================== */
 $('btnStart').onclick = startGame;
-$('btnBetDone').onclick = () => { S.turn++; enterTurn(); };
-$('btnPassOk').onclick = showBet;
-$('btnReveal').onclick = reveal;
-$('btnNext').onclick = () => {
-  if (S.ri + 1 >= S.rounds){ finish(); return; }
-  S.ri++; beginRound(); window.scrollTo(0,0);
+$('btnAgain').onclick = () => {
+  const pool = items.filter(isUsable);
+  S.players.forEach(p => { p.chips = S.startChips; p.hist = []; });
+  S.order = orderQuestions(pool);
+  writeRecent(S.order.slice(0, S.rounds).map(q => q.id));
+  S.ri = 0;
+  $('topbar').classList.remove('hide');
+  beginRound();
 };
-$('btnAgain').onclick = startGame;
-$('btnBackTop').onclick = () => { show('scSetup'); };
+$('btnTop').onclick = () => { show('scSetup'); $('topbar').classList.add('hide'); bar('','',false); };
+$('btnShowData').onclick = showData;
+$('btnDataBack').onclick = () => show('scSetup');
 $('btnLoad').onclick = () => $('fileInput').click();
 $('fileInput').onchange = ev => {
   const f = ev.target.files[0];
@@ -657,15 +916,19 @@ $('fileInput').onchange = ev => {
       const j = JSON.parse(r.result);
       if (!j.items || !j.items.length) throw new Error('items がありません');
       items = j.items;
-      $('dataInfo').textContent = f.name + ' を読み込み（' + items.length + ' 問）';
-      $('setupWarn').textContent = '';
       initSetup();
-    } catch(e){
-      $('setupWarn').textContent = '読み込み失敗: ' + e.message;
-    }
+      $('dataInfo').textContent = f.name + ' を読み込みました（' + items.filter(isUsable).length + ' 問）';
+    } catch(e){ $('setupWarn').textContent = '読み込み失敗: ' + e.message; }
   };
   r.readAsText(f);
 };
+
+/* 長押し（マウス／タッチ両対応） */
+const hb = $('holdBtn');
+hb.addEventListener('mousedown', holdBegin);
+hb.addEventListener('touchstart', holdBegin, {passive:false});
+['mouseup','mouseleave','touchend','touchcancel'].forEach(e =>
+  hb.addEventListener(e, () => { if (holdTimer) holdCancel(); }));
 
 initSetup();
 </script>
