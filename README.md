@@ -163,3 +163,33 @@ patent_casino/
 ```
 
 `index.html` は生成物なので直接編集しないこと。`src/template.html` を直して `python3 build.py` を実行する。
+
+## Streamlit版
+
+同じゲームを Streamlit でも動かせる。ブラウザ配布したい場合や、Streamlit Community Cloud に載せる場合はこちら。
+
+```bash
+pip install -r requirements.txt
+streamlit run app.py
+```
+
+Streamlit Community Cloud にデプロイするときの設定値。
+
+| 項目 | 値 |
+|---|---|
+| Repository | `muu4649/patent-casino` |
+| Branch | `main` |
+| **Main file path** | **`app.py`** |
+
+ゲームの数値仕様は `casino/game.py` に集約してある（`src/template.html` のJS実装と同一）。
+`BOARD_HIT` などを変えるときは**両方を揃えること**。片方だけ変えるとHTML版とStreamlit版でルールがずれる。
+
+### HTML版との違い
+
+| | HTML版 (`index.html`) | Streamlit版 (`app.py`) |
+|---|---|---|
+| 配布 | ファイルを渡すだけ。通信なし | サーバーが必要 |
+| BET操作 | ワードごとに ＋/− ボタン | ワードを選んでスライダーで枚数指定 |
+| データ追加 | `build.py` で埋め込み or 画面から読み込み | `data/` に置く or 画面から読み込み |
+
+どちらも問題データは **JSON形式のみ**。PDF・CSV・Excel からの取り込みには対応していない。
