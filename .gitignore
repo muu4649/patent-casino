@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.DS_Store
+
+# 取得スクリプトの出力（レジューム用のローカル作業ファイル）
+_drafts/*.jsonl

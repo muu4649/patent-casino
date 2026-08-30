@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>特許カジノ</title>
+<style>
+:root{
+  --felt:#0d3b2e; --felt2:#0a2f24; --ink:#0b0f0d;
+  --gold:#d4af37; --gold-dim:#8a7328; --cream:#f4efe2;
+  --red:#b3202e; --green:#1f8a4c; --gray:#6b7a75;
+  --p1:#e4b429; --p2:#4aa3df; --p3:#e06c4f; --p4:#7fc47f;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; padding:0; min-height:100vh;
+  background:
+    radial-gradient(ellipse at 50% 0%, #14513e 0%, var(--felt) 45%, var(--felt2) 100%);
+  color:var(--cream);
+  font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;
+  font-feature-settings:"palt";
+}
+.wrap{max-width:1000px;margin:0 auto;padding:20px 16px 60px}
+h1{
+  font-size:30px;letter-spacing:.14em;margin:8px 0 2px;text-align:center;
+  color:var(--gold);text-shadow:0 2px 0 #5b4a17,0 0 22px rgba(212,175,55,.35);
+}
+.sub{text-align:center;color:#9fb8ae;font-size:12px;letter-spacing:.24em;margin-bottom:22px}
+.card{
+  background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(0,0,0,.18));
+  border:1px solid rgba(212,175,55,.34); border-radius:12px;
+  padding:18px 20px; margin-bottom:16px;
+  box-shadow:0 8px 26px rgba(0,0,0,.34);
+}
+.card h2{margin:0 0 12px;font-size:15px;letter-spacing:.13em;color:var(--gold);font-weight:700}
+button{
+  font-family:inherit;font-size:14px;cursor:pointer;
+  background:linear-gradient(180deg,#1b6b50,#124a37);
+  color:var(--cream);border:1px solid rgba(212,175,55,.5);
+  border-radius:8px;padding:9px 16px;transition:.14s;
+}
+button:hover:not(:disabled){background:linear-gradient(180deg,#238263,#16583f);transform:translateY(-1px)}
+button:disabled{opacity:.34;cursor:not-allowed}
+button.primary{background:linear-gradient(180deg,var(--gold),#a8862a);color:#241d05;font-weight:700;border-color:#e8cf78}
+button.primary:hover:not(:disabled){background:linear-gradient(180deg,#e8c752,#bb9730)}
+button.ghost{background:transparent;border-color:rgba(244,239,226,.28)}
+input,select{
+  font-family:inherit;font-size:14px;padding:8px 10px;border-radius:7px;
+  border:1px solid rgba(212,239,226,.26);background:rgba(0,0,0,.3);color:var(--cream);
+}
+input:focus,select:focus{outline:2px solid var(--gold);outline-offset:1px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.hide{display:none !important}
+.muted{color:#9fb8ae;font-size:12px;line-height:1.75}
+
+/* 出題カード */
+.qhead{text-align:center;padding:6px 0 4px}
+.qlabel{font-size:11px;letter-spacing:.3em;color:var(--gold-dim)}
+.qtitle{
+  font-family:"Hiragino Mincho ProN",serif;font-size:32px;font-weight:600;
+  margin:8px 0 12px;letter-spacing:.05em;line-height:1.35;
+}
+.qmeta{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px}
+.chipmeta{
+  font-size:11px;padding:4px 11px;border-radius:999px;
+  border:1px solid rgba(212,175,55,.34);background:rgba(0,0,0,.26);color:#cfe0d8;
+}
+.qhint{font-size:12.5px;color:#a9c2b8;margin-top:8px;font-style:italic}
+
+/* ベットボード */
+.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(184px,1fr));gap:10px;margin-top:6px}
+.wcard{
+  position:relative;border:1px solid rgba(212,175,55,.3);border-radius:10px;
+  background:linear-gradient(180deg,rgba(0,0,0,.3),rgba(0,0,0,.44));
+  padding:11px 12px 9px;transition:.14s;
+}
+.wcard.sel{border-color:var(--gold);background:linear-gradient(180deg,rgba(212,175,55,.19),rgba(212,175,55,.07));box-shadow:0 0 16px rgba(212,175,55,.26)}
+.wcard .w{font-size:17px;font-weight:700;letter-spacing:.02em;margin-bottom:3px;word-break:break-all}
+.wcard .o{font-size:12px;color:var(--gold);letter-spacing:.06em;font-weight:700}
+.wcard .ctl{display:flex;gap:5px;align-items:center;margin-top:8px}
+.wcard .ctl button{padding:3px 9px;font-size:13px;border-radius:6px;min-width:30px}
+.wcard .amt{
+  min-width:38px;text-align:center;font-size:15px;font-weight:700;
+  color:var(--gold);font-variant-numeric:tabular-nums;
+}
+.wcard.hit{border-color:var(--green);background:linear-gradient(180deg,rgba(31,138,76,.26),rgba(31,138,76,.09))}
+.wcard.mis{border-color:rgba(179,32,46,.6);background:linear-gradient(180deg,rgba(179,32,46,.18),rgba(0,0,0,.32));opacity:.72}
+.badge{
+  position:absolute;top:-8px;right:-6px;font-size:10px;font-weight:700;
+  padding:2px 8px;border-radius:999px;letter-spacing:.1em;
+}
+.badge.hit{background:var(--green);color:#fff}
+.badge.mis{background:var(--red);color:#fff}
+
+/* プレイヤー */
+.pbar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:4px}
+.ptag{
+  display:flex;align-items:center;gap:7px;padding:6px 13px;border-radius:999px;
+  background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.14);font-size:13px;
+}
+.ptag .dot{width:9px;height:9px;border-radius:50%}
+.ptag .c{font-weight:700;color:var(--gold);font-variant-numeric:tabular-nums}
+.ptag.now{border-color:var(--gold);box-shadow:0 0 14px rgba(212,175,55,.3);background:rgba(212,175,55,.12)}
+
+/* 請求項 */
+.claim{
+  font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
+  background:#f6f3e9;color:#1a1a1a;border-radius:8px;padding:16px 18px;
+  margin-bottom:11px;line-height:2.0;font-size:14.5px;white-space:pre-wrap;
+  border-left:4px solid var(--gold-dim);
+}
+.claim .cn{
+  display:inline-block;font-family:system-ui,sans-serif;font-size:11px;font-weight:700;
+  letter-spacing:.16em;color:#6b5a1e;background:#e8dfc0;
+  padding:3px 10px;border-radius:4px;margin-bottom:9px;
+}
+mark.hl{background:#ffe066;color:#000;padding:1px 2px;border-radius:3px;font-weight:700;box-shadow:0 0 0 1px #d4af37}
+mark.hl.bet{background:#1f8a4c;color:#fff;box-shadow:0 0 0 2px #0d3b2e}
+
+/* 結果テーブル */
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{padding:9px 10px;text-align:left;border-bottom:1px solid rgba(255,255,255,.11)}
+th{color:var(--gold);font-size:11px;letter-spacing:.14em;font-weight:700}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+.plus{color:#6ee7a0;font-weight:700}
+.minus{color:#ff8b8b;font-weight:700}
+.rank1{background:linear-gradient(90deg,rgba(212,175,55,.24),transparent)}
+
+/* 順位 */
+.podium{display:flex;flex-direction:column;gap:9px;margin-top:6px}
+.prow{
+  display:flex;align-items:center;gap:14px;padding:13px 17px;border-radius:10px;
+  background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.11);
+}
+.prow.win{border-color:var(--gold);background:linear-gradient(90deg,rgba(212,175,55,.2),rgba(0,0,0,.28));box-shadow:0 0 22px rgba(212,175,55,.22)}
+.prow .rk{font-size:24px;font-weight:800;color:var(--gold);min-width:44px;font-family:serif}
+.prow .nm{font-size:18px;font-weight:700;flex:1}
+.prow .ch{font-size:24px;font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums}
+
+.warn{color:#ffb4b4;font-size:12.5px;margin-top:8px;min-height:17px}
+.turnbig{text-align:center;padding:26px 0}
+.turnbig .nm{font-size:30px;font-weight:800;margin-bottom:7px}
+.turnbig .ms{color:#9fb8ae;font-size:13px}
+.fic{
+  display:inline-block;font-size:10.5px;letter-spacing:.1em;padding:3px 9px;border-radius:4px;
+  background:rgba(179,32,46,.28);border:1px solid rgba(179,32,46,.6);color:#ffc9c9;margin-left:8px;
+  vertical-align:middle;
+}
+.stepnav{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px}
+.rules{font-size:13px;line-height:1.95;color:#cfe0d8}
+.rules b{color:var(--gold)}
+.rules ul{margin:6px 0 0;padding-left:20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>特 許 カ ジ ノ</h1>
+  <div class="sub">CLAIM BETTING GAME</div>
+
+  <!-- ============ セットアップ ============ -->
+  <section id="scSetup">
+    <div class="card">
+      <h2>ルール</h2>
+      <div class="rules">
+        <b>発明の名称</b>だけを見て、<b>請求項1〜2に登場する単語</b>を予想してチップを賭けます。
+        <ul>
+          <li>賭けられるのは <b>1ラウンドにつき3ワードまで</b>、<b>合計は所持チップの半分まで</b></li>
+          <li>的中すると <b>賭け枚数 × オッズ</b>（小数切り捨て）が戻る。外れたら没収</li>
+          <li>ボード12語のうち<b>実際に請求項へ出るのは4語だけ</b>。残り8語は罠です</li>
+          <li>罠にも正解と同じ帯のオッズが振ってあります。<b>オッズを見ても正解は分かりません</b></li>
+          <li>チップが0枚になったら、次のラウンド開始時に救済で3枚支給</li>
+          <li>全ラウンド終了時、チップが最も多い人の勝ち</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>プレイヤー</h2>
+      <div class="row" style="margin-bottom:12px">
+        <label class="muted">人数</label>
+        <select id="nPlayers"></select>
+        <label class="muted" style="margin-left:14px">初期チップ</label>
+        <select id="startChips"></select>
+        <label class="muted" style="margin-left:14px">ラウンド数</label>
+        <select id="nRounds"></select>
+      </div>
+      <div id="nameInputs" class="row"></div>
+      <div class="warn" id="setupWarn"></div>
+      <div class="row" style="margin-top:14px">
+        <button class="primary" id="btnStart">ゲーム開始</button>
+        <button class="ghost" id="btnLoad">問題データを読み込む</button>
+        <input type="file" id="fileInput" accept=".json" class="hide">
+        <span class="muted" id="dataInfo"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ラウンド見出し ============ -->
+  <section id="scRound" class="hide">
+    <div class="pbar" id="pbar"></div>
+
+    <div class="card">
+      <div class="qhead">
+        <div class="qlabel" id="roundLabel">ROUND 1</div>
+        <div class="qtitle" id="qTitle"></div>
+        <div class="qmeta" id="qMeta"></div>
+        <div class="qhint" id="qHint"></div>
+      </div>
+    </div>
+
+    <!-- BET -->
+    <div id="betArea">
+      <div class="card">
+        <h2 id="betWho">BET</h2>
+        <div class="muted" id="betStatus"></div>
+        <div class="board" id="board"></div>
+        <div class="warn" id="betWarn"></div>
+        <div class="stepnav">
+          <span class="muted" id="betSummary"></span>
+          <button class="primary" id="btnBetDone">この内容で確定</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 交代画面 -->
+    <div id="passArea" class="hide">
+      <div class="card">
+        <div class="turnbig">
+          <div class="nm" id="nextName"></div>
+          <div class="ms">の番です。前の人の賭けは見えません。</div>
+          <div style="margin-top:18px"><button class="primary" id="btnPassOk">準備OK</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 開票前 -->
+    <div id="revealArea" class="hide">
+      <div class="card">
+        <div class="turnbig">
+          <div class="nm">全員のBETが完了</div>
+          <div class="ms">請求項1〜2を開示します</div>
+          <div style="margin-top:18px"><button class="primary" id="btnReveal">開　票</button></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 開票結果 ============ -->
+  <section id="scResult" class="hide">
+    <div class="pbar" id="pbar2"></div>
+    <div class="card">
+      <h2>請求項</h2>
+      <div class="muted" style="margin-bottom:10px">
+        <mark class="hl">黄色</mark> = ボードにあった正解語 ／ <mark class="hl bet">緑</mark> = 誰かが賭けて的中した語
+      </div>
+      <div id="claimBox"></div>
+      <div class="muted" id="srcInfo"></div>
+    </div>
+
+    <div class="card">
+      <h2>ボード結果</h2>
+      <div class="board" id="boardResult"></div>
+    </div>
+
+    <div class="card">
+      <h2>精算</h2>
+      <div id="settleBox"></div>
+      <div class="stepnav">
+        <span class="muted" id="nextInfo"></span>
+        <button class="primary" id="btnNext">次のラウンドへ</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 最終結果 ============ -->
+  <section id="scFinal" class="hide">
+    <div class="card">
+      <h2>最終結果</h2>
+      <div class="podium" id="podium"></div>
+    </div>
+    <div class="card">
+      <h2>チップ推移</h2>
+      <div style="overflow-x:auto"><table id="historyTable"></table></div>
+      <div class="row" style="margin-top:16px">
+        <button class="primary" id="btnAgain">もう一度あそぶ</button>
+        <button class="ghost" id="btnBackTop">設定に戻る</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ===== 問題データ（build.py が data/*.json から埋め込む） ===== */
+const DATA = __QUESTIONS_JSON__;
+
+/* ===== 定数 ===== */
+const MAX_WORDS = 3;        // 1ラウンドに賭けられるワード数
+const BOARD_HIT = 4;        // ボードに出す正解語の数
+const BOARD_MIS = 8;        // ボードに出す罠語の数（的中率33%。50%だと倍率に対して当たりすぎる）
+const BAILOUT   = 3;        // 破産時の救済チップ
+const BET_RATIO = 0.5;      // 1ラウンドに賭けられるのは所持チップのこの割合まで
+const BET_FLOOR = 3;        // ただし最低この枚数までは賭けられる
+const betLimit = chips => Math.max(BET_FLOOR, Math.floor(chips * BET_RATIO));
+const PCOLOR = ['var(--p1)','var(--p2)','var(--p3)','var(--p4)'];
+
+/* ===== 状態 ===== */
+let S = null;
+let items = (DATA && DATA.items) ? DATA.items.slice() : [];
+
+/* ===== ユーティリティ ===== */
+const $ = id => document.getElementById(id);
+const shuffle = a => { for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+const bodyOf = it => it.claims.map(c => c.text).join('\n');
+const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const band = o => o < 2.5 ? 0 : (o <= 7 ? 1 : 2);
+
+/* ボード生成: 正解語・罠語をオッズ帯バランスを見て抽出する */
+function makeBoard(it){
+  const body = bodyOf(it);
+  const hit = it.words.filter(w => body.includes(w.w));
+  const mis = it.words.filter(w => !body.includes(w.w));
+  const pick = (pool, n) => {
+    const by = [[],[],[]];
+    shuffle(pool.slice()).forEach(w => by[band(w.odds)].push(w));
+    const out = [];
+    const quota = [Math.floor(n/3), Math.ceil(n/3), n - Math.floor(n/3) - Math.ceil(n/3)];
+    for (let b=0; b<3; b++) for (let k=0; k<quota[b] && by[b].length; k++) out.push(by[b].pop());
+    const rest = shuffle([].concat(by[0],by[1],by[2]));
+    while (out.length < n && rest.length) out.push(rest.pop());
+    return out;
+  };
+  const board = pick(hit, BOARD_HIT).concat(pick(mis, BOARD_MIS));
+  board.forEach(w => { w.isHit = body.includes(w.w); });
+  return shuffle(board);
+}
+
+/* ===== セットアップ ===== */
+function initSetup(){
+  const np = $('nPlayers'), sc = $('startChips'), nr = $('nRounds');
+  np.innerHTML=''; sc.innerHTML=''; nr.innerHTML='';
+  [2,3,4].forEach(n => np.add(new Option(n+'人', n)));
+  [20,30,50].forEach(n => sc.add(new Option(n+'枚', n)));
+  np.value = 2; sc.value = 20;
+  const maxR = Math.max(1, items.length);
+  for (let i=1; i<=maxR; i++) nr.add(new Option(i+'ラウンド', i));
+  nr.value = Math.min(3, maxR);
+  np.onchange = renderNames;
+  renderNames();
+  $('dataInfo').textContent = '収録 ' + items.length + ' 問';
+}
+function renderNames(){
+  const n = +$('nPlayers').value, box = $('nameInputs');
+  const old = [...box.querySelectorAll('input')].map(i => i.value);
+  box.innerHTML = '';
+  for (let i=0;i<n;i++){
+    const inp = document.createElement('input');
+    inp.type='text'; inp.maxLength=10; inp.style.width='140px';
+    inp.placeholder = 'プレイヤー'+(i+1);
+    inp.value = old[i] || '';
+    box.appendChild(inp);
+  }
+}
+
+/* ===== ゲーム開始 ===== */
+function startGame(){
+  const names = [...$('nameInputs').querySelectorAll('input')]
+    .map((inp,i) => inp.value.trim() || ('プレイヤー'+(i+1)));
+  if (new Set(names).size !== names.length){ $('setupWarn').textContent='名前が重複しています'; return; }
+  if (!items.length){ $('setupWarn').textContent='問題データがありません'; return; }
+  $('setupWarn').textContent = '';
+  const chips = +$('startChips').value;
+  S = {
+    players: names.map((nm,i) => ({name:nm, chips, color:PCOLOR[i], hist:[]})),
+    rounds: +$('nRounds').value,
+    order: shuffle(items.slice()),
+    ri: 0, turn: 0, board: [], bets: []
+  };
+  beginRound();
+}
+
+function beginRound(){
+  const it = S.order[S.ri];
+  S.board = makeBoard(it);
+  S.bets = S.players.map(() => ({}));
+  S.turn = 0;
+  // 破産救済
+  S.players.forEach(p => { if (p.chips <= 0) p.chips = BAILOUT; });
+
+  $('roundLabel').textContent = 'ROUND ' + (S.ri+1) + ' / ' + S.rounds;
+  $('qTitle').innerHTML = esc(it.title) +
+    (it.source === 'fictional' ? '<span class="fic">架空・動作確認用</span>' : '');
+  $('qMeta').innerHTML = [
+    it.assignee ? '出願人：'+esc(it.assignee) : '',
+    it.date ? '出願年：'+esc(String(it.date)) : '',
+    it.ipc ? 'IPC：'+esc(it.ipc) : '',
+    it.num && it.num !== '架空' ? esc(it.num) : ''
+  ].filter(Boolean).map(t => '<span class="chipmeta">'+t+'</span>').join('');
+  $('qHint').textContent = it.hint || '';
+
+  show('scRound');
+  renderPbar();
+  enterTurn();
+}
+
+function enterTurn(){
+  if (S.turn >= S.players.length){
+    $('betArea').classList.add('hide');
+    $('passArea').classList.add('hide');
+    $('revealArea').classList.remove('hide');
+    return;
+  }
+  // 2人目以降は交代画面を挟む
+  if (S.turn > 0){
+    $('betArea').classList.add('hide');
+    $('revealArea').classList.add('hide');
+    $('passArea').classList.remove('hide');
+    $('nextName').textContent = S.players[S.turn].name;
+    $('nextName').style.color = S.players[S.turn].color;
+  } else {
+    showBet();
+  }
+  renderPbar();
+}
+
+function showBet(){
+  $('passArea').classList.add('hide');
+  $('revealArea').classList.add('hide');
+  $('betArea').classList.remove('hide');
+  const p = S.players[S.turn];
+  $('betWho').innerHTML = '<span style="color:'+p.color+'">'+esc(p.name)+'</span> の BET';
+  $('betStatus').textContent = '所持 ' + p.chips + ' 枚 ／ 最大 ' + MAX_WORDS +
+    ' ワード ／ このラウンドは合計 ' + Math.min(p.chips, betLimit(p.chips)) + ' 枚まで';
+  renderBoard();
+  updateBetSummary();
+}
+
+function renderBoard(){
+  const box = $('board'); box.innerHTML = '';
+  const bet = S.bets[S.turn];
+  S.board.forEach((w, i) => {
+    const amt = bet[w.w] || 0;
+    const d = document.createElement('div');
+    d.className = 'wcard' + (amt > 0 ? ' sel' : '');
+    d.innerHTML =
+      '<div class="w">'+esc(w.w)+'</div>'+
+      '<div class="o">'+w.odds.toFixed(1)+' 倍</div>'+
+      '<div class="ctl">'+
+        '<button data-i="'+i+'" data-d="-1">−</button>'+
+        '<span class="amt">'+amt+'</span>'+
+        '<button data-i="'+i+'" data-d="1">＋</button>'+
+        '<button data-i="'+i+'" data-d="5">+5</button>'+
+      '</div>';
+    box.appendChild(d);
+  });
+  box.querySelectorAll('button').forEach(b => b.onclick = () => {
+    changeBet(+b.dataset.i, +b.dataset.d);
+  });
+}
+
+function changeBet(i, delta){
+  const w = S.board[i], bet = S.bets[S.turn], p = S.players[S.turn];
+  const cur = bet[w.w] || 0;
+  const total = Object.values(bet).reduce((a,b)=>a+b, 0);
+  let next = cur + delta;
+  if (next < 0) next = 0;
+  // ワード数上限
+  if (cur === 0 && next > 0){
+    const used = Object.keys(bet).filter(k => bet[k] > 0).length;
+    if (used >= MAX_WORDS){ warnBet('賭けられるのは'+MAX_WORDS+'ワードまでです'); return; }
+  }
+  // 1ラウンドの上限（所持の半分。全額突っ込んで最終ラウンドだけで決着するのを防ぐ）
+  const lim = Math.min(p.chips, betLimit(p.chips));
+  if (total - cur + next > lim){
+    next = lim - (total - cur);
+    if (next <= cur){ warnBet('このラウンドは合計 '+lim+' 枚までです（所持 '+p.chips+' 枚）'); return; }
+  }
+  if (next === 0) delete bet[w.w]; else bet[w.w] = next;
+  warnBet('');
+  updateCard(i); updateBetSummary();
+}
+/* カード全体を作り直すとちらつくので枚数と選択状態だけ差し替える */
+function updateCard(i){
+  const card = $('board').children[i];
+  if (!card) return;
+  const amt = S.bets[S.turn][S.board[i].w] || 0;
+  card.querySelector('.amt').textContent = amt;
+  card.classList.toggle('sel', amt > 0);
+}
+function warnBet(m){ $('betWarn').textContent = m; }
+
+function updateBetSummary(){
+  const bet = S.bets[S.turn];
+  const words = Object.keys(bet).filter(k => bet[k] > 0);
+  const total = words.reduce((a,k) => a + bet[k], 0);
+  $('betSummary').textContent = words.length
+    ? words.length + 'ワード / 合計 ' + total + ' 枚'
+    : '1ワード以上に賭けてください';
+  $('btnBetDone').disabled = (words.length === 0);
+}
+
+function renderPbar(){
+  const html = S.players.map((p,i) =>
+    '<div class="ptag'+(i===S.turn && S.turn<S.players.length ? ' now':'')+'">'+
+      '<span class="dot" style="background:'+p.color+'"></span>'+
+      esc(p.name)+' <span class="c">'+p.chips+'</span>'+
+    '</div>').join('');
+  $('pbar').innerHTML = html;
+  $('pbar2').innerHTML = S.players.map(p =>
+    '<div class="ptag"><span class="dot" style="background:'+p.color+'"></span>'+
+    esc(p.name)+' <span class="c">'+p.chips+'</span></div>').join('');
+}
+
+/* ===== 開票 ===== */
+function reveal(){
+  const it = S.order[S.ri];
+
+  // 誰かが賭けて的中した語
+  const betHitWords = new Set();
+  S.board.forEach(w => {
+    if (!w.isHit) return;
+    if (S.bets.some(b => (b[w.w]||0) > 0)) betHitWords.add(w.w);
+  });
+
+  // 請求項の表示（ボードにあった正解語をハイライト）
+  const boardHits = S.board.filter(w => w.isHit).map(w => w.w);
+  $('claimBox').innerHTML = it.claims.map(c =>
+    '<div class="claim"><span class="cn">請求項 '+esc(c.num)+'</span>\n' +
+    highlight(c.text, boardHits, betHitWords) + '</div>'
+  ).join('');
+  $('srcInfo').innerHTML = it.source === 'fictional'
+    ? '※ この設問は動作確認用の架空明細書です。実在特許ではありません。'
+    : (it.url ? '出典：<span style="color:var(--gold)">'+esc(it.num)+'</span>　'+esc(it.url) : '');
+
+  // ボード結果
+  $('boardResult').innerHTML = S.board.map(w => {
+    const bettors = S.players.map((p,i) => ({p, a: S.bets[i][w.w]||0})).filter(x => x.a > 0);
+    const who = bettors.map(x =>
+      '<span style="color:'+x.p.color+'">'+esc(x.p.name)+' '+x.a+'枚</span>').join(' / ');
+    return '<div class="wcard '+(w.isHit?'hit':'mis')+'">'+
+      '<span class="badge '+(w.isHit?'hit':'mis')+'">'+(w.isHit?'出た':'出ない')+'</span>'+
+      '<div class="w">'+esc(w.w)+'</div>'+
+      '<div class="o">'+w.odds.toFixed(1)+' 倍</div>'+
+      '<div class="muted" style="margin-top:6px;min-height:16px">'+(who||'　')+'</div>'+
+    '</div>';
+  }).join('');
+
+  // 精算
+  let rows = '<tr><th>プレイヤー</th><th>賭け</th><th class="num">投入</th><th class="num">払戻</th><th class="num">増減</th><th class="num">残高</th></tr>';
+  S.players.forEach((p,i) => {
+    const bet = S.bets[i];
+    let stake = 0, payout = 0;
+    const detail = Object.keys(bet).map(k => {
+      const a = bet[k], w = S.board.find(x => x.w === k);
+      stake += a;
+      const pay = w.isHit ? Math.floor(a * w.odds) : 0;
+      payout += pay;
+      return '<span style="color:'+(w.isHit?'#6ee7a0':'#ff8b8b')+'">'+esc(k)+' '+a+'枚'+
+             (w.isHit ? ' →'+pay : ' ×')+'</span>';
+    }).join('<br>');
+    const diff = payout - stake;
+    p.chips = p.chips - stake + payout;
+    p.hist.push(p.chips);
+    rows += '<tr>'+
+      '<td><span class="dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'+p.color+';margin-right:7px"></span>'+esc(p.name)+'</td>'+
+      '<td style="font-size:12px;line-height:1.7">'+(detail||'—')+'</td>'+
+      '<td class="num">'+stake+'</td>'+
+      '<td class="num">'+payout+'</td>'+
+      '<td class="num '+(diff>=0?'plus':'minus')+'">'+(diff>=0?'+':'')+diff+'</td>'+
+      '<td class="num"><b style="color:var(--gold)">'+p.chips+'</b></td>'+
+    '</tr>';
+  });
+  $('settleBox').innerHTML = '<table>'+rows+'</table>';
+
+  const last = (S.ri + 1 >= S.rounds);
+  $('btnNext').textContent = last ? '最終結果を見る' : '次のラウンドへ';
+  $('nextInfo').textContent = last ? '' : '残り ' + (S.rounds - S.ri - 1) + ' ラウンド';
+
+  show('scResult');
+  renderPbar();
+  window.scrollTo(0,0);
+}
+
+/* 請求項本文中の語をハイライト。長い語を優先して重複マークを防ぐ */
+function highlight(text, words, betSet){
+  const ws = words.slice().sort((a,b) => b.length - a.length);
+  const marks = [];   // {s,e,w}
+  ws.forEach(w => {
+    let from = 0, idx;
+    while ((idx = text.indexOf(w, from)) !== -1){
+      const s = idx, e = idx + w.length;
+      if (!marks.some(m => s < m.e && e > m.s)) marks.push({s, e, w});
+      from = idx + 1;
+    }
+  });
+  marks.sort((a,b) => a.s - b.s);
+  let out = '', pos = 0;
+  marks.forEach(m => {
+    out += esc(text.slice(pos, m.s));
+    out += '<mark class="hl'+(betSet.has(m.w) ? ' bet' : '')+'">'+esc(text.slice(m.s, m.e))+'</mark>';
+    pos = m.e;
+  });
+  out += esc(text.slice(pos));
+  return out;
+}
+
+/* ===== 最終結果 ===== */
+function finish(){
+  const rank = S.players.map((p,i) => ({p, i})).sort((a,b) => b.p.chips - a.p.chips);
+  $('podium').innerHTML = rank.map((r, k) => {
+    const tie = k > 0 && r.p.chips === rank[k-1].p.chips;
+    const pos = tie ? '=' : (k+1);
+    return '<div class="prow'+(k===0?' win':'')+'">'+
+      '<div class="rk">'+pos+'</div>'+
+      '<div class="nm" style="color:'+r.p.color+'">'+esc(r.p.name)+'</div>'+
+      '<div class="ch">'+r.p.chips+' <span style="font-size:13px;color:#9fb8ae">枚</span></div>'+
+    '</div>';
+  }).join('');
+
+  let head = '<tr><th>プレイヤー</th>';
+  for (let i=0;i<S.rounds;i++) head += '<th class="num">R'+(i+1)+'</th>';
+  head += '</tr>';
+  const body = S.players.map(p => {
+    let tr = '<tr><td><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'+p.color+';margin-right:7px"></span>'+esc(p.name)+'</td>';
+    p.hist.forEach(v => tr += '<td class="num">'+v+'</td>');
+    return tr + '</tr>';
+  }).join('');
+  $('historyTable').innerHTML = head + body;
+  show('scFinal');
+  window.scrollTo(0,0);
+}
+
+/* ===== 画面切替 ===== */
+function show(id){
+  ['scSetup','scRound','scResult','scFinal'].forEach(s => {
+    $(s).classList.toggle('hide', s !== id);
+  });
+}
+
+/* ===== イベント ===== */
+$('btnStart').onclick = startGame;
+$('btnBetDone').onclick = () => { S.turn++; enterTurn(); };
+$('btnPassOk').onclick = showBet;
+$('btnReveal').onclick = reveal;
+$('btnNext').onclick = () => {
+  if (S.ri + 1 >= S.rounds){ finish(); return; }
+  S.ri++; beginRound(); window.scrollTo(0,0);
+};
+$('btnAgain').onclick = startGame;
+$('btnBackTop').onclick = () => { show('scSetup'); };
+$('btnLoad').onclick = () => $('fileInput').click();
+$('fileInput').onchange = ev => {
+  const f = ev.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const j = JSON.parse(r.result);
+      if (!j.items || !j.items.length) throw new Error('items がありません');
+      items = j.items;
+      $('dataInfo').textContent = f.name + ' を読み込み（' + items.length + ' 問）';
+      $('setupWarn').textContent = '';
+      initSetup();
+    } catch(e){
+      $('setupWarn').textContent = '読み込み失敗: ' + e.message;
+    }
+  };
+  r.readAsText(f);
+};
+
+initSetup();
+</script>
+</body>
+</html>
