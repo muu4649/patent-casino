@@ -76,6 +76,11 @@ div.stButton > button { background:linear-gradient(180deg,#1b6b50,#124a37); colo
   border:1px solid rgba(212,175,55,.5); border-radius:8px; font-weight:600; }
 div.stButton > button:hover { background:linear-gradient(180deg,#238263,#16583f); color:#fff;
   border-color:#d4af37; }
+/* 選択中のワード */
+div.stButton > button[kind="primary"] { background:linear-gradient(180deg,#d4af37,#a8862a);
+  color:#241d05; border-color:#e8cf78; font-weight:700; }
+div.stButton > button[kind="primary"]:hover { background:linear-gradient(180deg,#e8c752,#bb9730);
+  color:#241d05; }
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -287,31 +292,44 @@ elif S.phase == "bet":
     st.caption("所持 {} 枚 ／ 最大 {} ワード ／ このラウンドは合計 {} 枚まで".format(
         p["chips"], G.MAX_WORDS, lim))
 
-    # ボードは眺めるための表示。賭ける操作は下の選択とスライダーで行う
-    # （number_input は Enter を押すまで確定せず、パーティ用途に向かない）
+    # ワードを直接押して選ぶ。選択はターンごとの session_state に持つ
+    sel_key = "sel_{}_{}".format(S.ri, S.turn)
+    if sel_key not in S:
+        S[sel_key] = []
+    selected = S[sel_key]
+
+    st.caption("ワードを押して選ぶ（もう一度押すと解除）")
     cols = st.columns(4)
     for i, w in enumerate(S.board):
-        cols[i % 4].markdown(
-            '<div class="pc-card" style="padding:9px 12px 7px;margin-bottom:6px">'
-            '<div class="pc-w">{}</div>'
-            '<div class="pc-odds">{:.1f} 倍</div></div>'.format(w["w"], w["odds"]),
-            unsafe_allow_html=True)
+        on = w["w"] in selected
+        if cols[i % 4].button(
+                "{}{}　{:.1f}倍".format("✓ " if on else "", w["w"], w["odds"]),
+                key="wb_{}_{}_{}".format(S.ri, S.turn, i),
+                type="primary" if on else "secondary",
+                use_container_width=True):
+            if on:
+                selected.remove(w["w"])
+                S.bet_warn = ""
+            elif len(selected) >= G.MAX_WORDS:
+                S.bet_warn = "賭けられるのは{}ワードまでです。解除してから選び直してください".format(
+                    G.MAX_WORDS)
+            else:
+                selected.append(w["w"])
+                S.bet_warn = ""
+            rerun()
 
-    label_of = {"{}（{:.1f}倍）".format(w["w"], w["odds"]): w["w"] for w in S.board}
-    picked = st.multiselect(
-        "賭けるワードを選ぶ（最大{}ワード）".format(G.MAX_WORDS),
-        list(label_of.keys()), key="pick_{}_{}".format(S.ri, S.turn),
-        max_selections=G.MAX_WORDS)
+    if S.get("bet_warn"):
+        st.warning(S.bet_warn)
 
     amounts = {}
-    if picked:
-        scols = st.columns(len(picked))
-        for c, label in zip(scols, picked):
-            word = label_of[label]
-            with c:
-                amounts[word] = st.slider(
-                    label, min_value=1, max_value=int(lim), value=1, step=1,
-                    key="amt_{}_{}_{}".format(S.ri, S.turn, word))
+    if selected:
+        odds_of = {w["w"]: w["odds"] for w in S.board}
+        scols = st.columns(len(selected))
+        for c, word in zip(scols, selected):
+            amounts[word] = c.slider(
+                "{}（{:.1f}倍）".format(word, odds_of[word]),
+                min_value=1, max_value=int(lim), value=1, step=1,
+                key="amt_{}_{}_{}".format(S.ri, S.turn, word))
 
     used = {k: v for k, v in amounts.items() if v > 0}
     total = sum(used.values())
@@ -330,6 +348,7 @@ elif S.phase == "bet":
 
     if st.button("この内容で確定", type="primary", disabled=bool(err)):
         S.bets[S.turn] = used
+        S.bet_warn = ""
         S.turn += 1
         S.phase = "reveal" if S.turn >= len(S.players) else "pass"
         rerun()
