@@ -20,7 +20,9 @@ DATA_DIR = os.path.join(HERE, "data")
 
 def load_items():
     items, seen = [], set()
-    files = sorted(glob.glob(os.path.join(DATA_DIR, "*.json")))
+    # _ で始まるファイルはテンプレートや下書き扱いで読み込まない
+    files = [p for p in sorted(glob.glob(os.path.join(DATA_DIR, "*.json")))
+             if not os.path.basename(p).startswith("_")]
     if not files:
         sys.exit("data/ に JSON がありません")
     for p in files:

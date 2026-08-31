@@ -23,7 +23,7 @@ UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
       "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36")
 
 PER_THEME = 11          # テーマあたり取得件数（18テーマ×11 ≒ 198件）
-SLEEP = 1.5
+SLEEP = 3.0
 MAX_RETRY = 5
 
 

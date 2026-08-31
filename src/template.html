@@ -495,8 +495,10 @@ function initSetup(){
   [2,3,4].forEach(n => np.add(new Option(n+'人', n)));
   [20,30,50].forEach(n => sc.add(new Option(n+'枚', n)));
   np.value = 2; sc.value = 20;
-  for (let i=1;i<=Math.max(1,pool.length);i++) nr.add(new Option(i+'回', i));
-  nr.value = Math.min(3, Math.max(1,pool.length));
+  // 収録が増えても選択肢が長大にならないよう上限を設ける
+  const maxR = Math.min(10, Math.max(1, pool.length));
+  for (let i=1;i<=maxR;i++) nr.add(new Option(i+'回', i));
+  nr.value = Math.min(3, maxR);
   np.onchange = renderNames;
   renderNames();
   const ng = items.length - pool.length;
