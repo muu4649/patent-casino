@@ -4,3 +4,8 @@ __pycache__/
 
 # 取得スクリプトの出力（レジューム用のローカル作業ファイル）
 _drafts/*.jsonl
+
+# 画面キャプチャ・比較画像・プレイ動画（重いので管理しない）
+_drafts/*_screens_*/
+_drafts/*_compare/
+_drafts/*.mp4
