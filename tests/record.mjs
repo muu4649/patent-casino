@@ -2,7 +2,9 @@
 /**
  * プレイ動画の録画
  *
- *   node --experimental-websocket tests/record.mjs --out play.mp4 [--device mobile|desktop] [--rounds 2]
+ *   node --experimental-websocket tests/record.mjs --out play.mp4 [--device mobile|desktop] [--rounds 2] [--no-captions]
+ *
+ * 既定で、画面の下に解説字幕の帯を付ける（場面の切り替わりに合わせて録画中に記録した時刻で出す）。
  *
  * ヘッドレス Chrome で実解像度のスクリーンショットを連続取得し、ffmpeg で 30fps の mp4 にする。
  * 見せ場が入るよう、録画用のプレイヤーは盤面の正解を見て賭け先を選ぶ
@@ -20,7 +22,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const TMP = process.env.PC_TMP || os.tmpdir();
 
 function parseArgs(argv) {
-  const o = { out: path.join(ROOT, 'play.mp4'), device: 'mobile', rounds: 2, seed: 7, html: path.join(ROOT, 'index.html') };
+  const o = { out: path.join(ROOT, 'play.mp4'), device: 'mobile', rounds: 2, seed: 7, html: path.join(ROOT, 'index.html'), captions: true };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--out') o.out = path.resolve(argv[++i]);
@@ -28,6 +30,7 @@ function parseArgs(argv) {
     else if (a === '--rounds') o.rounds = Number(argv[++i]);
     else if (a === '--seed') o.seed = Number(argv[++i]);
     else if (a === '--html') o.html = path.resolve(argv[++i]);
+    else if (a === '--no-captions') o.captions = false;
     else throw new Error('不明な引数: ' + a);
   }
   return o;
@@ -115,6 +118,8 @@ async function main() {
     await rec.exclusive(() => pg.release(c.x, c.y));
   };
   const pause = ms => sleep(ms);
+  const caps = [];
+  const cap = text => caps.push({ t: Date.now() / 1000, text });
 
   try {
     console.log('録画中 ... ' + vp.name);
@@ -124,7 +129,9 @@ async function main() {
       await pg.open(pathToFileURL(o.html).href, seed);
       await pg.waitFor(`document.getElementById('btnStart')`, 8000);
       const ok = await pg.js(`(() => { document.getElementById('btnStart').click();
-        return S.board.some(w => w.isHit && w.odds >= 8) && S.board.filter(w => w.isHit).length === 4; })()`);
+        // 抽出ミスの英字だけの語（例：ｉｉ）が盤面に出る出題は動画では避ける
+        const junk = w => /^[a-zA-Zａ-ｚＡ-Ｚ]+$/.test(w.w);
+        return S.board.some(w => w.isHit && w.odds >= 8) && !S.board.some(junk); })()`);
       if (ok) break;
     }
     console.log('乱数の種: ' + seed);
@@ -132,7 +139,8 @@ async function main() {
     await pg.js(TAP_MARKER);
     await pg.js(`window.scrollTo(0,0)`);
     await rec.start();
-    await pause(2200);                                       // タイトルの登場
+    cap('特許カジノ ― 発明の名称だけを見て、請求項に出てくる単語を当てるゲーム');
+    await pause(3800);                                       // タイトルの登場
 
     // 名前とラウンド数を入れる（入力は一瞬で済ませる）
     await pg.js(`(() => {
@@ -140,7 +148,8 @@ async function main() {
       ['ミナト', 'ソラ'].forEach((v, i) => { ins[i].value = v; });
       const r = document.getElementById('nRounds'); r.value = '${o.rounds}'; r.dispatchEvent(new Event('change', { bubbles: true }));
     })()`);
-    await pause(900);
+    cap('人数・チップ・ラウンド数を決めて開始。1台の端末を回して2〜4人で遊ぶ');
+    await pause(2600);
     // 録画ループと並行するとタップを取りこぼすことがあるので、画面が変わるまで押し直す
     for (let i = 0; i < 4; i++) {
       await tap('#btnStart', 0, 900);
@@ -148,7 +157,8 @@ async function main() {
     }
 
     for (let r = 1; r <= o.rounds; r++) {
-      // 盤面の答えを見て、見せ場が出る賭け先を決める
+      const first = r === 1;
+      // 盤面の答えを見て、見せ場が出る賭け先を決める（字幕に使う語もここで取る）
       const plan = await pg.js(`(() => {
         const idx = w => S.board.findIndex(x => x.w === w.w);
         const hits = S.board.filter(w => w.isHit).sort((a, b) => b.odds - a.odds);
@@ -157,39 +167,77 @@ async function main() {
         // P1：高オッズの正解に厚く、罠にも1つ。P2：堅い正解と罠
         const p1 = r === 1 ? [idx(hits[0]), idx(miss[0]), idx(hits[2])] : [idx(miss[1]), idx(hits[3])];
         const p2 = r === 1 ? [idx(hits[3]), idx(miss[2])] : [idx(hits[0]), idx(hits[1]), idx(miss[0])];
-        return { p1, p2 };
+        const it = S.order[S.ri];
+        return { p1, p2, title: it.title, top: hits[0].w, topOdds: hits[0].odds,
+                 trap: miss[0].w, traps: miss.filter(w => w.odds < 8).slice(0, 2).map(w => w.w) };
       })()`);
       const bets = [
-        { cards: plan.p1, chips: r === 1 ? ['5', null, null] : ['3', 'max'] },
-        { cards: plan.p2, chips: r === 1 ? ['3', '1'] : ['5', '3', null] },
+        { cards: plan.p1, chips: first ? ['5', null, null] : ['3', 'max'] },
+        { cards: plan.p2, chips: first ? ['3', '1'] : ['5', '3', null] },
       ];
 
-      for (const bet of bets) {
+      for (let pi = 0; pi < bets.length; pi++) {
+        const bet = bets[pi];
         await pg.waitFor(vis('#handoff'), 8000, '手番交代');
-        await pause(1300);
+        if (first && pi === 0) cap('手番が来たら端末を本人に渡す。光のリングを長押しするとBETが始まる');
+        else if (first) cap('交代のたびに画面は真っ暗に。前の人がどこに賭けたかは見えない');
+        else if (pi === 0) cap(`ROUND ${r}。毎ラウンド別の特許が出題される`);
+        await pause(first ? 2400 : 1300);
         await hold('#holdBtn');
         await pg.waitFor(`${vis('#scBet')} && document.getElementById('handoff').classList.contains('hide')`, 8000, 'BET画面');
-        await pause(1500);                                   // 発明の名称を読む間
-        for (let k = 0; k < bet.cards.length; k++) {
-          await tap('#board .wcard', bet.cards[k], 700);
-          if (bet.chips[k]) await tap(`.chipbtn[data-v="${bet.chips[k]}"]`, 0, 650);
+        if (first && pi === 0) {
+          cap(`お題は「${plan.title}」。並んだ12語のうち、実際に請求項に出るのは4語だけ`);
+          await pause(3200);
+          cap('単語をタップして最大3語まで選ぶ。枚数は 1・3・5・MAX のチップで決める');
+        } else if (first) {
+          cap('オッズは出現しにくさの目安。罠にも同じ帯のオッズが付いていて、倍率では見分けられない');
+          await pause(1200);
+        } else if (pi === 0) {
+          cap('1ラウンドに賭けられるのは所持チップの半分まで。0枚になっても次のラウンドで3枚もらえる');
+          await pause(900);
+        } else {
+          await pause(800);
         }
-        await pause(700);
+        if (first && pi === 0) await pause(600);
+        for (let k = 0; k < bet.cards.length; k++) {
+          await tap('#board .wcard', bet.cards[k], first ? 900 : 650);
+          if (bet.chips[k]) await tap(`.chipbtn[data-v="${bet.chips[k]}"]`, 0, first ? 800 : 600);
+        }
+        await pause(first ? 1000 : 600);
         await tap('#barBtn', 0, 300);
       }
 
       await pg.waitFor(vis('#scReveal'), 8000, '開票');
+      if (first) {
+        cap('全員がBETしたら開票。請求項1〜2に出た語が1語ずつ判定される');
+        await pause(700);
+        cap(`「${plan.top}」${plan.topOdds.toFixed(1)}倍が的中！ 8倍以上の的中は BIG WIN`);
+      } else {
+        cap('開票。緑のチェックが請求項に出た語、赤い×は罠');
+      }
       await pg.waitFor(`${vis('#bottombar')} && document.getElementById('barBtn').textContent.includes('収支')`, 20000, '開票完了');
-      await pause(1600);
-      await tap('#barBtn', 0, 2600);                          // 収支
-      await tap('#barBtn', 0, 300);                           // 答え合わせ
-      await pause(1800);
+      await pause(first ? 2600 : 1600);
+      await tap('#barBtn', 0, 200);                          // 収支
+      cap(first ? '当たれば「賭けた枚数 × オッズ」を獲得、外れた分は没収'
+                : 'このラウンドの収支。チップの増減がそのまま順位に響く');
+      await pause(first ? 3600 : 2400);
+      await tap('#barBtn', 0, 200);                          // 答え合わせ
+      if (first) {
+        cap('答え合わせ。請求項の全文で、どの語が出ていたかを確認できる');
+        await pause(3000);
+        const t = plan.traps.length ? plan.traps.map(w => `「${w}」`).join('や') : `「${plan.trap}」`;
+        cap(`${t}は出そうで出ない。明細書では別の言葉に置き換わっていることが多い`);
+      } else {
+        cap('黄色はボードにあった正解語、緑は誰かが当てた語');
+      }
       await pg.js(`window.scrollTo({ top: 520, behavior: 'smooth' })`);
-      await pause(2000);
-      await tap('#barBtn', 0, 300);                           // 次のラウンド or 最終結果
+      await pause(first ? 3600 : 2600);
+      await tap('#barBtn', 0, 300);                          // 次のラウンド or 最終結果
     }
     await pg.waitFor(vis('#scFinal'), 8000, '最終結果');
-    await pause(4500);
+    const winner = await pg.js(`rankPlayers(S.players).filter(r => r.rank === 1).map(r => r.p.name + ' ' + r.p.chips + '枚').join('・')`);
+    cap(`全ラウンド終了。チップが最も多い人の勝ち ― 優勝は ${winner}`);
+    await pause(5200);
     await rec.stop();
   } finally {
     await b.close();
@@ -213,6 +261,14 @@ async function main() {
     '-vf', 'fps=30,scale=trunc(iw/2)*2:trunc(ih/2)*2', '-c:v', 'libx264', '-preset', 'slow', '-crf', '20',
     '-pix_fmt', 'yuv420p', '-movflags', '+faststart', o.out]);
   const sec = fr[fr.length - 1].t - fr[0].t;
+  if (o.captions && caps.length) {
+    const raw = o.out.replace(/\.mp4$/, '') + '.nocap.mp4';
+    fs.renameSync(o.out, raw);
+    const json = path.join(work, 'captions.json');
+    fs.writeFileSync(json, JSON.stringify(caps.map(c => ({ t: Math.max(0, c.t - fr[0].t), text: c.text })), null, 1));
+    execFileSync('python3', [path.join(ROOT, 'tests', 'caption_video.py'), raw, json, o.out, '--duration', sec.toFixed(2)], { stdio: 'inherit' });
+    fs.rmSync(raw);
+  }
   console.log(`出力: ${path.relative(process.cwd(), o.out)}（${sec.toFixed(1)}秒 / 取得 ${fr.length} 枚＝平均 ${(fr.length / sec).toFixed(1)} 枚/秒 → 30fps に変換）`);
   fs.rmSync(work, { recursive: true, force: true });
 }

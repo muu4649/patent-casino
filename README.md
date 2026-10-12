@@ -108,6 +108,10 @@ python3 tests/compare_screens.py 改修前フォルダ 改修後フォルダ 出
 node --experimental-websocket tests/record.mjs --device mobile --out play.mp4  # プレイ動画（ffmpeg が必要）
 ```
 
+プレイ動画には既定で**解説字幕**が付く。録画中に場面が切り替わった時刻を記録し、その時刻で字幕を出す。
+発明の名称・BIG WIN になった語と倍率・罠の例・優勝者は、その回の盤面から取って字幕に入れる。
+帯は Pillow で描いて動画の下に連結するので、ffmpeg に字幕フィルタが無くても動く（`--no-captions` で字幕なし）。
+
 ## オッズ設計
 
 `オッズ = 1 / 出現確率` を4層で見積もっている。
@@ -302,7 +306,8 @@ patent_casino/
 ├── tests/
 │   ├── logic.test.mjs          ← ゲームロジックの差分テスト
 │   ├── e2e.mjs                 ← 画面の通しプレイ・レイアウト検査・画面キャプチャ
-│   ├── record.mjs              ← プレイ動画の録画
+│   ├── record.mjs              ← プレイ動画の録画（解説字幕つき）
+│   ├── caption_video.py        ← 動画の下に字幕帯を付ける
 │   ├── compare_screens.py      ← 改修前後の比較画像
 │   └── e2e_report.md           ← 直近の E2E 結果
 └── _drafts/
