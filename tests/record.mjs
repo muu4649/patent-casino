@@ -2,9 +2,10 @@
 /**
  * プレイ動画の録画
  *
- *   node --experimental-websocket tests/record.mjs --out play.mp4 [--device mobile|desktop] [--rounds 2] [--no-captions]
+ *   node --experimental-websocket tests/record.mjs --out play.mp4 [--device mobile|desktop] [--rounds 2] [--no-captions] [--no-audio]
  *
  * 既定で、画面の下に解説字幕の帯を付ける（場面の切り替わりに合わせて録画中に記録した時刻で出す）。
+ * 既定で、合成したラウンジジャズの BGM と、操作の時刻に合わせた効果音を付ける（tests/casino_audio.py）。
  *
  * ヘッドレス Chrome で実解像度のスクリーンショットを連続取得し、ffmpeg で 30fps の mp4 にする。
  * 見せ場が入るよう、録画用のプレイヤーは盤面の正解を見て賭け先を選ぶ
@@ -22,7 +23,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const TMP = process.env.PC_TMP || os.tmpdir();
 
 function parseArgs(argv) {
-  const o = { out: path.join(ROOT, 'play.mp4'), device: 'mobile', rounds: 2, seed: 7, html: path.join(ROOT, 'index.html'), captions: true };
+  const o = { out: path.join(ROOT, 'play.mp4'), device: 'mobile', rounds: 2, seed: 7, html: path.join(ROOT, 'index.html'), captions: true, audio: true };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--out') o.out = path.resolve(argv[++i]);
@@ -31,6 +32,7 @@ function parseArgs(argv) {
     else if (a === '--seed') o.seed = Number(argv[++i]);
     else if (a === '--html') o.html = path.resolve(argv[++i]);
     else if (a === '--no-captions') o.captions = false;
+    else if (a === '--no-audio') o.audio = false;
     else throw new Error('不明な引数: ' + a);
   }
   return o;
@@ -109,17 +111,21 @@ async function main() {
   };
   const tap = async (sel, idx = 0, wait = 650) => {
     await rec.exclusive(async () => { await mark(sel, idx, false); await pg.tap(sel, idx); });
+    ev(sel.includes('wcard') ? 'card' : sel.includes('chipbtn') ? 'chip' : sel === '#btnStart' ? 'start' : 'button');
     await sleep(wait);
   };
   const hold = async sel => {
     // 長押しの間も輪が進む様子を撮りたいので、押す瞬間と離す瞬間だけ止める
     const c = await rec.exclusive(async () => { await mark(sel, 0, true); const c = await pg.centerOf(sel); await pg.press(c.x, c.y); return c; });
+    ev('hold');
     await sleep(1000);
     await rec.exclusive(() => pg.release(c.x, c.y));
   };
   const pause = ms => sleep(ms);
   const caps = [];
   const cap = text => caps.push({ t: Date.now() / 1000, text });
+  const evs = [];
+  const ev = (type, extra) => evs.push(Object.assign({ t: Date.now() / 1000, type }, extra || {}));
 
   try {
     console.log('録画中 ... ' + vp.name);
@@ -179,6 +185,7 @@ async function main() {
       for (let pi = 0; pi < bets.length; pi++) {
         const bet = bets[pi];
         await pg.waitFor(vis('#handoff'), 8000, '手番交代');
+        ev('handoff');
         if (first && pi === 0) cap('手番が来たら端末を本人に渡す。光のリングを長押しするとBETが始まる');
         else if (first) cap('交代のたびに画面は真っ暗に。前の人がどこに賭けたかは見えない');
         else if (pi === 0) cap(`ROUND ${r}。毎ラウンド別の特許が出題される`);
@@ -208,6 +215,8 @@ async function main() {
       }
 
       await pg.waitFor(vis('#scReveal'), 8000, '開票');
+      ev('reveal', { rows: await pg.js(`S.revealRows.map(w => ({ hit: w.isHit,
+        big: !!(w.isHit && w.odds >= 8 && S.bets.some(b => b[w.w])) }))`) });
       if (first) {
         cap('全員がBETしたら開票。請求項1〜2に出た語が1語ずつ判定される');
         await pause(700);
@@ -218,6 +227,7 @@ async function main() {
       await pg.waitFor(`${vis('#bottombar')} && document.getElementById('barBtn').textContent.includes('収支')`, 20000, '開票完了');
       await pause(first ? 2600 : 1600);
       await tap('#barBtn', 0, 200);                          // 収支
+      ev('score', { n: 2 });
       cap(first ? '当たれば「賭けた枚数 × オッズ」を獲得、外れた分は没収'
                 : 'このラウンドの収支。チップの増減がそのまま順位に響く');
       await pause(first ? 3600 : 2400);
@@ -235,6 +245,7 @@ async function main() {
       await tap('#barBtn', 0, 300);                          // 次のラウンド or 最終結果
     }
     await pg.waitFor(vis('#scFinal'), 8000, '最終結果');
+    ev('final');
     const winner = await pg.js(`rankPlayers(S.players).filter(r => r.rank === 1).map(r => r.p.name + ' ' + r.p.chips + '枚').join('・')`);
     cap(`全ラウンド終了。チップが最も多い人の勝ち ― 優勝は ${winner}`);
     await pause(5200);
@@ -268,6 +279,17 @@ async function main() {
     fs.writeFileSync(json, JSON.stringify(caps.map(c => ({ t: Math.max(0, c.t - fr[0].t), text: c.text })), null, 1));
     execFileSync('python3', [path.join(ROOT, 'tests', 'caption_video.py'), raw, json, o.out, '--duration', sec.toFixed(2)], { stdio: 'inherit' });
     fs.rmSync(raw);
+  }
+  if (o.audio) {
+    const evJson = path.join(work, 'events.json');
+    fs.writeFileSync(evJson, JSON.stringify(evs.map(e => Object.assign({}, e, { t: Math.max(0, e.t - fr[0].t) })), null, 1));
+    const wav = path.join(work, 'audio.wav');
+    execFileSync('python3', [path.join(ROOT, 'tests', 'casino_audio.py'), evJson, wav, '--duration', (sec + 1).toFixed(2)], { stdio: 'inherit' });
+    const silent = o.out.replace(/\.mp4$/, '') + '.silent.mp4';
+    fs.renameSync(o.out, silent);
+    execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', silent, '-i', wav, '-map', '0:v', '-map', '1:a',
+      '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-shortest', '-movflags', '+faststart', o.out]);
+    fs.rmSync(silent);
   }
   console.log(`出力: ${path.relative(process.cwd(), o.out)}（${sec.toFixed(1)}秒 / 取得 ${fr.length} 枚＝平均 ${(fr.length / sec).toFixed(1)} 枚/秒 → 30fps に変換）`);
   fs.rmSync(work, { recursive: true, force: true });

@@ -112,6 +112,11 @@ node --experimental-websocket tests/record.mjs --device mobile --out play.mp4  #
 発明の名称・BIG WIN になった語と倍率・罠の例・優勝者は、その回の盤面から取って字幕に入れる。
 帯は Pillow で描いて動画の下に連結するので、ffmpeg に字幕フィルタが無くても動く（`--no-captions` で字幕なし）。
 
+音も既定で付く（`--no-audio` で無音）。BGM はラウンジジャズ風のスウィング（112bpm、ウォーキングベース・エレピ・ライドシンバル・ビブラフォン）、
+効果音はカードのタップ・チップ・長押し完了・開票の的中／外れ・BIG WIN（ジャックポット音とコインの音）・収支のコインカウンター・優勝ファンファーレ。
+どちらも `tests/casino_audio.py` が numpy で新しく合成した音なので、既存の楽曲や音源を使っておらず権利上の制約はない。
+効果音は録画中に記録した操作の時刻に合わせて鳴らし、BIG WIN とファンファーレの間は BGM を下げる。
+
 ## オッズ設計
 
 `オッズ = 1 / 出現確率` を4層で見積もっている。
@@ -308,6 +313,7 @@ patent_casino/
 │   ├── e2e.mjs                 ← 画面の通しプレイ・レイアウト検査・画面キャプチャ
 │   ├── record.mjs              ← プレイ動画の録画（解説字幕つき）
 │   ├── caption_video.py        ← 動画の下に字幕帯を付ける
+│   ├── casino_audio.py         ← BGM と効果音の合成
 │   ├── compare_screens.py      ← 改修前後の比較画像
 │   └── e2e_report.md           ← 直近の E2E 結果
 └── _drafts/
